@@ -1,5 +1,7 @@
 from models_utils import *
 from torch import nn
+import torch
+import torch.nn.functional as F
 
 
 # Resnet Blocks
@@ -72,7 +74,7 @@ class ResnetPointnet(nn.Module):
         self.actvn = nn.ReLU()
         self.pool = maxpool
 
-    def forward(self, p, cond=None):
+    def forward(self, p):
         # batch_size, T, D = p.size()
         # output size: B x T X F
 
@@ -123,7 +125,7 @@ class Decoder(nn.Module):
         def make_sequence():
             return []
 
-        dims = [latent_size + 3] + dims + [1]
+        dims = [latent_size + 3] + dims + [2]
 
         self.num_layers = len(dims)
         self.norm_layers = norm_layers
@@ -172,6 +174,7 @@ class Decoder(nn.Module):
     def forward(self, input):
         xyz = input[:, -3:]
 
+        # 如果需要对latent code进行dropout，则先将latent code 切分出来，drop完毕后再与坐标拼接
         if input.shape[1] > 3 and self.latent_dropout:
             latent_vecs = input[:, :-3]
             latent_vecs = F.dropout(latent_vecs, p=0.2, training=self.training)
@@ -180,15 +183,20 @@ class Decoder(nn.Module):
             x = input
 
         for layer in range(0, self.num_layers - 1):
+            # 根据层号获取层
             lin = getattr(self, "lin" + str(layer))
+            # latent_in存储的是跳层连接的层号
             if layer in self.latent_in:
                 x = torch.cat([x, input], 1)
+            # 是否每层都需要拼接坐标点
             elif layer != 0 and self.xyz_in_all:
                 x = torch.cat([x, xyz], 1)
+            # 当前层进行运算
             x = lin(x)
-            # last layer Tanh
+            # 如果最后一层需要进行tanh
             if layer == self.num_layers - 2 and self.use_tanh:
                 x = self.tanh(x)
+            # 在最后一层之前，进行normalization和dropout
             if layer < self.num_layers - 2:
                 if (
                     self.norm_layers is not None
@@ -201,8 +209,37 @@ class Decoder(nn.Module):
                 if self.dropout is not None and layer in self.dropout:
                     x = F.dropout(x, p=self.dropout_prob, training=self.training)
 
+        # 最后进行tanh
         if hasattr(self, "th"):
             x = self.th(x)
 
         return x
 
+
+class IBSNet(nn.Module):
+    def __init__(self, encoder_obj1, encoder_obj2, decoder, num_samp_per_scene):
+        super().__init__()
+        self.encoder_obj1 = encoder_obj1
+        self.encoder_obj2 = encoder_obj2
+        self.decoder = decoder
+        self.num_samp_per_scene = num_samp_per_scene
+
+        print(self.num_samp_per_scene)
+
+    def forward(self, x_obj1, x_obj2, xyz):
+        x_obj1 = self.encoder_obj1(x_obj1)
+        print(x_obj1.shape)
+        latent_obj1 = x_obj1.repeat_interleave(self.num_samp_per_scene, dim=0)
+        print(latent_obj1.shape)
+        x_obj2 = self.encoder_obj2(x_obj2)
+        latent_obj2 = x_obj2.repeat_interleave(self.num_samp_per_scene, dim=0)
+
+        latent = torch.cat([latent_obj1, latent_obj2], 1)
+
+        print(latent.shape)
+        print(xyz.shape)
+
+        decoder_inputs = torch.cat([latent, xyz], 1)
+        return self.decoder(decoder_inputs)
+        # x_hand, x_obj, x_class = self.decoder(decoder_inputs)
+        # return x_hand, x_obj, x_class

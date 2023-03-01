@@ -2,11 +2,11 @@
     "mesh_path": "../data/mesh",
     "sdf_path": "../data/sdf",
     "mesh_filename_re": "scene\\d\\.\\d{4}",
-    "process_filename_re": "scene7",
-    "save_data": false,
-    "visualize": true,
+    "process_filename_re": "scene",
+    "save_data": true,
+    "visualize": false,
     "sample_option": {
-        "method": "normal",
+        "method": "uniform",
         "points_num": 30000,
         "scale1": 1,
         "scale2": 1,
@@ -16,13 +16,13 @@
     "visualization_option": {
         "sdf_threshold": 0.3,
         "mesh1": true,
-        "mesh2": false,
-        "aabb1": false,
-        "aabb2": false,
-        "aabb": false,
-        "sdf1": false,
-        "sdf2": false,
-        "ibs": false
+        "mesh2": true,
+        "aabb1": true,
+        "aabb2": true,
+        "aabb": true,
+        "sdf1": true,
+        "sdf2": true,
+        "ibs": true
     }
 
 }

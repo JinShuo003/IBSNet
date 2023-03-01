@@ -10,20 +10,7 @@ import json
 def parseConfig(config_filepath: str = './config/generateSDF.json'):
     with open(config_filepath, 'r') as configfile:
         config = json.load(configfile)
-
-    mesh_path = config['mesh_path']
-    sdf_path = config['sdf_path']
-    mesh_path = os.path.abspath(mesh_path)
-    sdf_path = os.path.abspath(sdf_path)
-    mesh_filename_re = config['mesh_filename_re']
-    process_filename_re = config['process_filename_re']
-    save_data = config['save_data']
-    visualize = config['visualize']
-    sample_option = config['sample_option']
-    visualization_option = config['visualization_option']
-
-    return mesh_path, sdf_path, mesh_filename_re, process_filename_re, \
-           save_data, visualize, sample_option, visualization_option
+        return config
 
 
 def generateSDF(mesh_dir: str, mesh_filename_1: str, mesh_filename_2: str, sample_option: dict):
@@ -152,7 +139,6 @@ def visualizeMeshAndSDF(mesh_dir: str, mesh_filename_1: str, mesh_filename_2: st
     """
     显示sdf值小于threshold的点，以及geometries中的内容
     """
-    print(visualization_option)
     geometries = []
     mesh1 = o3d.io.read_triangle_mesh(os.path.join(mesh_dir, mesh_filename_1))
     mesh2 = o3d.io.read_triangle_mesh(os.path.join(mesh_dir, mesh_filename_2))
@@ -199,31 +185,32 @@ def saveSDFData(sdf_dir: str, sdf_filename: str, SDF_data):
         print('exsit')
         os.remove(sdf_path)
 
-    with open(sdf_path, 'w') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerows(SDF_data)
+    print(sdf_path)
+    np.savez(sdf_path, SDF_data)
+    # with open(sdf_path, 'w') as csvfile:
+    #     writer = csv.writer(csvfile)
+    #     writer.writerows(SDF_data)
 
 
 if __name__ == '__main__':
     # 获取配置参数
-    config_filepath = './config/generateSDF.json'
-    mesh_path, sdf_path, mesh_filename_re, process_filename_re, \
-    save_data, visualize, sample_option, visualization_option = parseConfig(config_filepath)
+    configFile_path = 'config/generateSDF.json'
+    specs = parseConfig(configFile_path)
 
     # 若目录不存在则创建目录
-    if not os.path.isdir(sdf_path):
-        os.mkdir(sdf_path)
+    if not os.path.isdir(specs["sdf_path"]):
+        os.mkdir(specs["sdf_path"])
 
     # 遍历mesh_dir下的每一对mesh，每对mesh生成一个sdf groundtruth文件，写入sdf_path
-    filename_list = os.listdir(mesh_path)
+    filename_list = os.listdir(specs["mesh_path"])
     handled_filename_list = set()
     for filename in filename_list:
         # 跳过不匹配正则式的文件
-        if re.match(process_filename_re, filename) is None:
+        if re.match(specs["process_filename_re"], filename) is None:
             continue
 
         # 数据成对出现，处理完一对后将前缀记录到map中，防止重复处理
-        current_pair_name = re.match(mesh_filename_re, filename).group()
+        current_pair_name = re.match(specs["mesh_filename_re"], filename).group()
         if current_pair_name in handled_filename_list:
             continue
         else:
@@ -231,10 +218,10 @@ if __name__ == '__main__':
 
         mesh_filename_1 = "{}_0.off".format(current_pair_name)
         mesh_filename_2 = "{}_1.off".format(current_pair_name)
-        sdf_filename = "{}.csv".format(current_pair_name)
-        SDF_data = generateSDF(mesh_path, mesh_filename_1, mesh_filename_2, sample_option)
+        sdf_filename = "{}.npz".format(current_pair_name)
+        SDF_data = generateSDF(specs["mesh_path"], mesh_filename_1, mesh_filename_2, specs["sample_option"])
 
-        if save_data:
-            saveSDFData(sdf_path, sdf_filename, SDF_data)
-        if visualize:
-            visualizeMeshAndSDF(mesh_path, mesh_filename_1, mesh_filename_2, SDF_data, visualization_option)
+        if specs["save_data"]:
+            saveSDFData(specs["sdf_path"], sdf_filename, SDF_data)
+        if specs["visualize"]:
+            visualizeMeshAndSDF(specs["mesh_path"], mesh_filename_1, mesh_filename_2, SDF_data, specs["visualization_option"])

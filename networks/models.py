@@ -1,4 +1,4 @@
-from models_utils import *
+from networks.models_utils import *
 from torch import nn
 import torch
 import torch.nn.functional as F
@@ -79,7 +79,6 @@ class ResnetPointnet(nn.Module):
         # output size: B x T X F
 
         net = self.fc_pos(p)
-
         # 每轮计算完毕后进行最大池化，将池化结果进行拓展，然后进行拼接
         net = self.block_0(net)
         pooled = self.pool(net, dim=1, keepdim=True).expand(net.size())
@@ -102,6 +101,7 @@ class ResnetPointnet(nn.Module):
         net = self.pool(net, dim=1)
 
         c = self.fc_c(self.actvn(net))
+
         return c
 
 
@@ -144,7 +144,6 @@ class Decoder(nn.Module):
                 out_dim = dims[layer + 1]
                 if self.xyz_in_all and layer != self.num_layers - 2:
                     out_dim -= 3
-
             if weight_norm and layer in self.norm_layers:
                 setattr(
                     self,
@@ -187,7 +186,7 @@ class Decoder(nn.Module):
             lin = getattr(self, "lin" + str(layer))
             # latent_in存储的是跳层连接的层号
             if layer in self.latent_in:
-                x = torch.cat([x, input], 1)
+                x = torch.cat([x, input], 2)
             # 是否每层都需要拼接坐标点
             elif layer != 0 and self.xyz_in_all:
                 x = torch.cat([x, xyz], 1)
@@ -224,22 +223,17 @@ class IBSNet(nn.Module):
         self.decoder = decoder
         self.num_samp_per_scene = num_samp_per_scene
 
-        print(self.num_samp_per_scene)
-
     def forward(self, x_obj1, x_obj2, xyz):
         x_obj1 = self.encoder_obj1(x_obj1)
-        print(x_obj1.shape)
-        latent_obj1 = x_obj1.repeat_interleave(self.num_samp_per_scene, dim=0)
-        print(latent_obj1.shape)
+        # latent_obj1 = x_obj1.repeat_interleave(self.num_samp_per_scene, dim=0)
+        latent_obj1 = x_obj1.reshape(-1, 1, x_obj1.shape[1]).repeat(1, self.num_samp_per_scene, 1)
+
         x_obj2 = self.encoder_obj2(x_obj2)
-        latent_obj2 = x_obj2.repeat_interleave(self.num_samp_per_scene, dim=0)
+        # latent_obj2 = x_obj2.repeat_interleave(self.num_samp_per_scene, dim=0)
+        latent_obj2 = x_obj2.reshape(-1, 1, x_obj1.shape[1]).repeat(1, self.num_samp_per_scene, 1)
 
-        latent = torch.cat([latent_obj1, latent_obj2], 1)
+        latent = torch.cat([latent_obj1, latent_obj2], 2)
 
-        print(latent.shape)
-        print(xyz.shape)
+        decoder_inputs = torch.cat([latent, xyz], 2)
 
-        decoder_inputs = torch.cat([latent, xyz], 1)
         return self.decoder(decoder_inputs)
-        # x_hand, x_obj, x_class = self.decoder(decoder_inputs)
-        # return x_hand, x_obj, x_class

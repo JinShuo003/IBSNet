@@ -38,7 +38,7 @@ def visualizePair(mesh_filename: str, pcd_filename: str):
 
 if __name__ == '__main__':
     # 获取配置参数
-    config_filepath = './config/visualizeMeshAndPCD.json'
+    config_filepath = '../preprocess/config/visualizeMeshAndPCD.json'
     mesh_path, pcd_path, mesh_filename_re, process_filename_re = parseConfig(config_filepath)
     if not os.path.isdir(pcd_path):
         os.mkdir(pcd_path)

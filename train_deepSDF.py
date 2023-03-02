@@ -249,6 +249,7 @@ def append_parameter_magnitudes(param_mag_log, model):
 
 def main_function(experiment_directory, continue_from, batch_split):
 
+    # 打印提示信息，读取配置参数
     logging.debug("running " + experiment_directory)
 
     specs = ws.load_experiment_specifications(experiment_directory)
@@ -325,12 +326,15 @@ def main_function(experiment_directory, continue_from, batch_split):
 
     code_bound = get_spec_with_default(specs, "CodeBound", None)
 
+    encoder_obj1 = arch.ResnetPointnet()
+    encoder_obj2 = arch.ResnetPointnet()
     decoder = arch.Decoder(latent_size, **specs["NetworkSpecs"]).cuda()
+    IBS_Net = arch.IBSNet(encoder_obj1, encoder_obj2, decoder, num_samp_per_scene)
 
     logging.info("training with {} GPU(s)".format(torch.cuda.device_count()))
 
     # if torch.cuda.device_count() > 1:
-    decoder = torch.nn.DataParallel(decoder)
+    IBS_Net = torch.nn.DataParallel(IBS_Net)
 
     num_epochs = specs["NumEpochs"]
     log_frequency = get_spec_with_default(specs, "LogFrequency", 10)
@@ -359,33 +363,33 @@ def main_function(experiment_directory, continue_from, batch_split):
 
     logging.info("There are {} scenes".format(num_scenes))
 
-    logging.debug(decoder)
+    logging.debug(IBS_Net)
 
     lat_vecs = torch.nn.Embedding(num_scenes, latent_size, max_norm=code_bound)
-    torch.nn.init.normal_(
-        lat_vecs.weight.data,
-        0.0,
-        get_spec_with_default(specs, "CodeInitStdDev", 1.0) / math.sqrt(latent_size),
-    )
-
-    logging.debug(
-        "initialized with mean magnitude {}".format(
-            get_mean_latent_vector_magnitude(lat_vecs)
-        )
-    )
+    # torch.nn.init.normal_(
+    #     lat_vecs.weight.data,
+    #     0.0,
+    #     get_spec_with_default(specs, "CodeInitStdDev", 1.0) / math.sqrt(latent_size),
+    # )
+    #
+    # logging.debug(
+    #     "initialized with mean magnitude {}".format(
+    #         get_mean_latent_vector_magnitude(lat_vecs)
+    #     )
+    # )
 
     loss_l1 = torch.nn.L1Loss(reduction="sum")
 
     optimizer_all = torch.optim.Adam(
         [
             {
-                "params": decoder.parameters(),
+                "params": IBS_Net.parameters(),
                 "lr": lr_schedules[0].get_learning_rate(0),
-            },
-            {
-                "params": lat_vecs.parameters(),
-                "lr": lr_schedules[1].get_learning_rate(0),
-            },
+            }
+            # {
+            #     "params": lat_vecs.parameters(),
+            #     "lr": lr_schedules[1].get_learning_rate(0),
+            # },
         ]
     )
 
@@ -401,9 +405,9 @@ def main_function(experiment_directory, continue_from, batch_split):
 
         logging.info('continuing from "{}"'.format(continue_from))
 
-        lat_epoch = load_latent_vectors(
-            experiment_directory, continue_from + ".pth", lat_vecs
-        )
+        # lat_epoch = load_latent_vectors(
+        #     experiment_directory, continue_from + ".pth", lat_vecs
+        # )
 
         model_epoch = ws.load_model_parameters(
             experiment_directory, continue_from, decoder
@@ -422,12 +426,12 @@ def main_function(experiment_directory, continue_from, batch_split):
                 loss_log, lr_log, timing_log, lat_mag_log, param_mag_log, model_epoch
             )
 
-        if not (model_epoch == optimizer_epoch and model_epoch == lat_epoch):
-            raise RuntimeError(
-                "epoch mismatch: {} vs {} vs {} vs {}".format(
-                    model_epoch, optimizer_epoch, lat_epoch, log_epoch
-                )
-            )
+        # if not (model_epoch == optimizer_epoch and model_epoch == lat_epoch):
+        #     raise RuntimeError(
+        #         "epoch mismatch: {} vs {} vs {} vs {}".format(
+        #             model_epoch, optimizer_epoch, lat_epoch, log_epoch
+        #         )
+        #     )
 
         start_epoch = model_epoch + 1
 
@@ -454,7 +458,7 @@ def main_function(experiment_directory, continue_from, batch_split):
 
         logging.info("epoch {}...".format(epoch))
 
-        decoder.train()
+        IBS_Net.train()
 
         adjust_learning_rate(lr_schedules, optimizer_all, epoch)
 

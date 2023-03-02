@@ -178,18 +178,18 @@ def visualizeMeshAndSDF(mesh_dir: str, mesh_filename_1: str, mesh_filename_2: st
     o3d.visualization.draw_geometries(geometries)
 
 
-def saveSDFData(sdf_dir: str, sdf_filename: str, SDF_data):
+def saveSDFData(sdf_dir: str, category: str, sdf_filename: str, SDF_data):
+    # 目录不存在则创建
+    if not os.path.isdir(os.path.join(sdf_dir, category)):
+        os.mkdir(os.path.join(sdf_dir, category))
     # 将data写入文件
-    sdf_path = os.path.join(sdf_dir, sdf_filename)
+    sdf_path = os.path.join(sdf_dir, category, sdf_filename)
     if os.path.isfile(sdf_path):
         print('exsit')
         os.remove(sdf_path)
 
     print(sdf_path)
-    np.savez(sdf_path, SDF_data)
-    # with open(sdf_path, 'w') as csvfile:
-    #     writer = csv.writer(csvfile)
-    #     writer.writerows(SDF_data)
+    np.savez(sdf_path, data=SDF_data)
 
 
 if __name__ == '__main__':
@@ -222,6 +222,7 @@ if __name__ == '__main__':
         SDF_data = generateSDF(specs["mesh_path"], mesh_filename_1, mesh_filename_2, specs["sample_option"])
 
         if specs["save_data"]:
-            saveSDFData(specs["sdf_path"], sdf_filename, SDF_data)
+            category = re.match(specs["category_re"], current_pair_name).group()
+            saveSDFData(specs["sdf_path"], category, sdf_filename, SDF_data)
         if specs["visualize"]:
             visualizeMeshAndSDF(specs["mesh_path"], mesh_filename_1, mesh_filename_2, SDF_data, specs["visualization_option"])

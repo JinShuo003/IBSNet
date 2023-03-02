@@ -8,17 +8,26 @@ import os
 import random
 import torch
 import torch.utils.data
+import open3d as o3d
 
 import deep_sdf.workspace as ws
 
 
 def get_instance_filenames(data_source, split):
     npzfiles = []
+    pcd1files = []
+    pcd2files = []
     for dataset in split:
         for class_name in split[dataset]:
             for instance_name in split[dataset][class_name]:
                 instance_filename = os.path.join(
                     dataset, class_name, instance_name + ".npz"
+                )
+                pcd1_filename = os.path.join(
+                    dataset, class_name, instance_name + "_0.ply"
+                )
+                pcd2_filename = os.path.join(
+                    dataset, class_name, instance_name + "_1.ply"
                 )
                 if not os.path.isfile(
                     os.path.join(data_source, ws.sdf_samples_subdir, instance_filename)
@@ -30,7 +39,10 @@ def get_instance_filenames(data_source, split):
                         "Requested non-existent file '{}'".format(instance_filename)
                     )
                 npzfiles += [instance_filename]
-    return npzfiles
+                pcd1files += [pcd1_filename]
+                pcd2files += [pcd2_filename]
+
+    return npzfiles, pcd1files, pcd2files
 
 
 class NoMeshFileError(RuntimeError):
@@ -73,21 +85,29 @@ def unpack_sdf_samples(filename, subsample=None):
     npz = np.load(filename)
     if subsample is None:
         return npz
-    pos_tensor = remove_nans(torch.from_numpy(npz["pos"]))
-    neg_tensor = remove_nans(torch.from_numpy(npz["neg"]))
 
-    # split the sample into half
-    half = int(subsample / 2)
+    data = remove_nans(torch.from_numpy(npz["data"]))
+    # half = int(subsample / 2)
+    # random_data = (torch.rand(half) * data.shape[0]).long()
+    # sample_data = torch.index_select(data, 0, random_data)
 
-    random_pos = (torch.rand(half) * pos_tensor.shape[0]).long()
-    random_neg = (torch.rand(half) * neg_tensor.shape[0]).long()
+    return data
 
-    sample_pos = torch.index_select(pos_tensor, 0, random_pos)
-    sample_neg = torch.index_select(neg_tensor, 0, random_neg)
-
-    samples = torch.cat([sample_pos, sample_neg], 0)
-
-    return samples
+    # pos_tensor = remove_nans(torch.from_numpy(npz["pos"]))
+    # neg_tensor = remove_nans(torch.from_numpy(npz["neg"]))
+    #
+    # # split the sample into half
+    # half = int(subsample / 2)
+    #
+    # random_pos = (torch.rand(half) * pos_tensor.shape[0]).long()
+    # random_neg = (torch.rand(half) * neg_tensor.shape[0]).long()
+    #
+    # sample_pos = torch.index_select(pos_tensor, 0, random_pos)
+    # sample_neg = torch.index_select(neg_tensor, 0, random_neg)
+    #
+    # samples = torch.cat([sample_pos, sample_neg], 0)
+    #
+    # return samples
 
 
 def unpack_sdf_samples_from_ram(data, subsample=None):
@@ -117,6 +137,12 @@ def unpack_sdf_samples_from_ram(data, subsample=None):
     return samples
 
 
+def get_pcd_data(pcd_filename):
+    pcd = o3d.io.read_point_cloud(pcd_filename)
+    xyz_load = torch.from_numpy(np.asarray(pcd.points))
+    return xyz_load
+
+
 class SDFSamples(torch.utils.data.Dataset):
     def __init__(
         self,
@@ -130,7 +156,7 @@ class SDFSamples(torch.utils.data.Dataset):
         self.subsample = subsample
 
         self.data_source = data_source
-        self.npyfiles = get_instance_filenames(data_source, split)
+        self.npyfiles, self.pcd1files, self.pcd2files = get_instance_filenames(data_source, split)
 
         logging.debug(
             "using "
@@ -159,13 +185,16 @@ class SDFSamples(torch.utils.data.Dataset):
         return len(self.npyfiles)
 
     def __getitem__(self, idx):
-        filename = os.path.join(
+        sdf_filename = os.path.join(
             self.data_source, ws.sdf_samples_subdir, self.npyfiles[idx]
         )
+        pcd1_filename = os.path.join(
+            self.data_source, ws.pcd_samples_subdir, self.pcd1files[idx]
+        )
+        pcd2_filename = os.path.join(
+            self.data_source, ws.pcd_samples_subdir, self.pcd2files[idx]
+        )
         if self.load_ram:
-            return (
-                unpack_sdf_samples_from_ram(self.loaded_data[idx], self.subsample),
-                idx,
-            )
+            return unpack_sdf_samples_from_ram(self.loaded_data[idx], self.subsample), idx
         else:
-            return unpack_sdf_samples(filename, self.subsample), idx
+            return get_pcd_data(pcd1_filename), get_pcd_data(pcd2_filename), unpack_sdf_samples(sdf_filename, self.subsample), idx

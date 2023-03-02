@@ -16,6 +16,7 @@ specifications_filename = "specs.json"
 data_source_map_filename = ".datasources.json"
 evaluation_subdir = "Evaluation"
 sdf_samples_subdir = "SdfSamples"
+pcd_samples_subdir = "pcd"
 surface_samples_subdir = "SurfaceSamples"
 normalization_param_subdir = "NormalizationParameters"
 training_meshes_subdir = "TrainingMeshes"
@@ -24,7 +25,6 @@ training_meshes_subdir = "TrainingMeshes"
 def load_experiment_specifications(experiment_directory):
 
     filename = os.path.join(experiment_directory, specifications_filename)
-
     if not os.path.isfile(filename):
         raise Exception(
             "The experiment directory ({}) does not include specifications file "

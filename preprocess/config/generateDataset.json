@@ -1,0 +1,10 @@
+{
+  "filename_re": "scene\\d\\.\\d{4}",
+  "category_re": "scene\\d",
+  "mesh_path": "../data/mesh",
+  "dataset_path": "../data/IBSNet",
+  "partition_option": {
+    "train_dataset_proportion": 0.6,
+    "test_dataset_proportion": 0.2
+  }
+}

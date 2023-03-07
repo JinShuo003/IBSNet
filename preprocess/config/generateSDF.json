@@ -1,26 +1,30 @@
 {
     "mesh_path": "../data/mesh",
+    "IOUgt_path": "../data/boundingBox",
     "sdf_path": "../data/SdfSamples/IBSNet",
     "mesh_filename_re": "scene\\d\\.\\d{4}",
-    "category_re": "scene\\d",
+    "categories": ["scene1","scene2","scene3","scene4","scene5","scene6","scene7","scene8","scene9"],
     "process_filename_re": "scene",
     "save_data": true,
     "visualize": false,
-    "sample_option": {
+    "sample_options": {
         "method": "uniform",
         "points_num": 30000,
         "scale1": 1,
         "scale2": 1,
-        "proportion1": 0.5,
-        "proportion2": 0.5
+        "scale_IOU": 1,
+        "proportion1": 0.2,
+        "proportion2": 0.2,
+        "proportion_IOU": 0.6
     },
-    "visualization_option": {
+    "visualization_options": {
         "sdf_threshold": 0.3,
-        "mesh1": true,
+        "mesh1": false,
         "mesh2": true,
         "aabb1": true,
         "aabb2": true,
         "aabb": true,
+        "aabb_IOUgt": true,
         "sdf1": true,
         "sdf2": true,
         "ibs": true

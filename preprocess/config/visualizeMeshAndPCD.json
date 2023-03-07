@@ -1,6 +1,0 @@
-{
-  "mesh_path": "../data/mesh/scene1",
-  "pcd_path": "../data/pcd/IBSNet/scene1",
-  "mesh_filename_re": "scene\\d\\.\\d{4}",
-  "process_filename_re": "scene1"
-}

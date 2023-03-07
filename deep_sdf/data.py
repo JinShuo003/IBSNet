@@ -86,7 +86,7 @@ def unpack_sdf_samples(filename, subsample=None):
     if subsample is None:
         return npz
 
-    data = remove_nans(torch.from_numpy(npz["data"]))
+    data = remove_nans(torch.from_numpy(npz["data"].astype(np.float32)))
     # half = int(subsample / 2)
     # random_data = (torch.rand(half) * data.shape[0]).long()
     # sample_data = torch.index_select(data, 0, random_data)
@@ -139,7 +139,8 @@ def unpack_sdf_samples_from_ram(data, subsample=None):
 
 def get_pcd_data(pcd_filename):
     pcd = o3d.io.read_point_cloud(pcd_filename)
-    xyz_load = torch.from_numpy(np.asarray(pcd.points))
+    xyz_load = torch.from_numpy(np.asarray(pcd.points).astype(np.float32))
+    # xyz_load = xyz_load.astype(np.float32)
     return xyz_load
 
 

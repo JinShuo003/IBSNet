@@ -13,19 +13,26 @@ def parseConfig(config_filepath: str = './config/generateSDF.json'):
         return config
 
 
-def generateSDF(mesh_dir: str, mesh_filename_1: str, mesh_filename_2: str, sample_option: dict):
+def generateSDF(specs: dict, category: str, current_pair_name):
     """
     在mesh1和mesh2组成的空间下进行随机散点，计算每个点对于两个mesh的sdf值，生成(x, y, z, sdf1, sdf2)后存储到pcd_dir下
     """
+    mesh_dir = specs["mesh_path"]
+    IOUgt_dir = specs["IOUgt_path"]
+    sample_option = specs["sample_options"]
+    mesh_filename_1 = "{}_0.off".format(current_pair_name)
+    mesh_filename_2 = "{}_1.off".format(current_pair_name)
+    IOUgt_filename = "{}.txt".format(current_pair_name)
 
     # 获取mesh
-    mesh1 = o3d.io.read_triangle_mesh(os.path.join(mesh_dir, mesh_filename_1))
-    mesh2 = o3d.io.read_triangle_mesh(os.path.join(mesh_dir, mesh_filename_2))
+    mesh1 = o3d.io.read_triangle_mesh(os.path.join(mesh_dir, category, mesh_filename_1))
+    mesh2 = o3d.io.read_triangle_mesh(os.path.join(mesh_dir, category, mesh_filename_2))
 
-    # 获取总体的aabb框，在其范围内散点
+    # 获取两物体的aabb框和交互区域的aabb框，在各自范围内按比例散点
     aabb1, aabb2, aabb = getTwoMeshBorder(mesh1, mesh2)
-    # random_points = getRandomPointsTogether(aabb, points_num, sample_method)
-    random_points = getRandomPointsSeparately(aabb1, aabb2, sample_option)
+    aabb_IOUgt = getAABBfromTwoPoints(os.path.join(IOUgt_dir, category, IOUgt_filename))
+
+    random_points = getRandomPointsSeparately(aabb1, aabb2, aabb_IOUgt, sample_option)
 
     # 创建光线追踪场景，并将模型添加到场景中
     scene1 = o3d.t.geometry.RaycastingScene()
@@ -59,7 +66,9 @@ def getTwoMeshBorder(mesh1, mesh2):
     # 计算共同的最小和最大边界点，构造成open3d.geometry.AxisAlignedBoundingBox
     border_min = np.array([mesh1.get_min_bound(), mesh2.get_min_bound()]).min(0)
     border_max = np.array([mesh1.get_max_bound(), mesh2.get_max_bound()]).max(0)
+
     aabb = o3d.geometry.AxisAlignedBoundingBox(border_min, border_max)
+
     # 求mesh1和mesh2的边界
     aabb1 = mesh1.get_axis_aligned_bounding_box()
     aabb2 = mesh2.get_axis_aligned_bounding_box()
@@ -68,6 +77,20 @@ def getTwoMeshBorder(mesh1, mesh2):
     aabb2.color = (0, 1, 0)
     aabb.color = (0, 0, 1)
     return aabb1, aabb2, aabb
+
+
+def getAABBfromTwoPoints(file_path: str):
+    with open(file_path, 'r') as file:
+        data = file.readlines()
+        line1 = data[0].strip('\n').strip(' ').split(' ')
+        line2 = data[1].strip('\n').strip(' ').split(' ')
+        min_bound = np.array([float(item) for item in line1])
+        max_bound = np.array([float(item) for item in line2])
+
+        aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
+        aabb.color = (1, 1, 0)
+
+        return aabb
 
 
 def getRandomPointsTogether(aabb, points_num: int, sample_method: str = 'uniform'):
@@ -94,82 +117,108 @@ def getRandomPointsTogether(aabb, points_num: int, sample_method: str = 'uniform
     return random_points
 
 
-def getRandomPointsSeparately(aabb1, aabb2, sample_option: dict):
+def getRandomPointsSeparately(aabb1, aabb2, aabb_IOU, sample_options: dict):
     """
     在aabb范围内按照sample_method规定的采样方法采样points_num个点
     """
     # 解析采样选项
-    method = sample_option["method"]
-    points_num = sample_option["points_num"]
-    scale1 = sample_option["scale1"]
-    scale2 = sample_option["scale2"]
-    proportion1 = sample_option["proportion1"]
-    proportion2 = sample_option["proportion2"]
+    method = sample_options["method"]
+    points_num = sample_options["points_num"]
+    scale1 = sample_options["scale1"]
+    scale2 = sample_options["scale2"]
+    scale_IOU = sample_options["scale_IOU"]
+
+    proportion1 = sample_options["proportion1"]
+    proportion2 = sample_options["proportion2"]
+    proportion_IOU = sample_options["proportion_IOU"]
 
     # 获取mesh1和mesh2的包围框边界点
     min_bound_mesh1 = aabb1.get_min_bound() * scale1
     max_bound_mesh1 = aabb1.get_max_bound() * scale1
     min_bound_mesh2 = aabb2.get_min_bound() * scale2
     max_bound_mesh2 = aabb2.get_max_bound() * scale2
+    min_bound_mesh_IOUgt = aabb_IOU.get_min_bound() * scale_IOU
+    max_bound_mesh_IOUgt = aabb_IOU.get_max_bound() * scale_IOU
 
     random_points_mesh1 = []
     random_points_mesh2 = []
+    random_points_mesh_IOUgt = []
+
     if method == 'uniform':
         for i in range(3):
             random_points_mesh1.append(randUniFormFloat(min_bound_mesh1[i], max_bound_mesh1[i],
                                                         int(points_num * proportion1)).reshape((-1, 1)))
             random_points_mesh2.append(randUniFormFloat(min_bound_mesh2[i], max_bound_mesh2[i],
                                                         int(points_num * proportion2)).reshape((-1, 1)))
+            random_points_mesh_IOUgt.append(randUniFormFloat(min_bound_mesh_IOUgt[i], max_bound_mesh_IOUgt[i],
+                                                        int(points_num * proportion_IOU)).reshape((-1, 1)))
     elif method == 'normal':
         for i in range(3):
             random_points_mesh1.append(randNormalFloat(min_bound_mesh1[i], max_bound_mesh1[i],
                                                        int(points_num * proportion1)).reshape((-1, 1)))
             random_points_mesh2.append(randNormalFloat(min_bound_mesh2[i], max_bound_mesh2[i],
                                                        int(points_num * proportion2)).reshape((-1, 1)))
+            random_points_mesh_IOUgt.append(randNormalFloat(min_bound_mesh_IOUgt[i], max_bound_mesh_IOUgt[i],
+                                                       int(points_num * proportion_IOU)).reshape((-1, 1)))
 
     random_points_mesh1_ = np.concatenate([random_points_mesh1[0], random_points_mesh1[1], random_points_mesh1[2]],
                                           axis=1)
     random_points_mesh2_ = np.concatenate([random_points_mesh2[0], random_points_mesh2[1], random_points_mesh2[2]],
                                           axis=1)
+    random_points_mesh_IOUgt_ = np.concatenate([random_points_mesh_IOUgt[0], random_points_mesh_IOUgt[1], random_points_mesh_IOUgt[2]],
+                                          axis=1)
 
-    return np.concatenate([random_points_mesh1_, random_points_mesh2_], axis=0)
+    return np.concatenate([random_points_mesh1_, random_points_mesh2_, random_points_mesh_IOUgt_], axis=0)
 
 
-def visualizeMeshAndSDF(mesh_dir: str, mesh_filename_1: str, mesh_filename_2: str, SDF_data=None, visualization_option={}):
+def visualizeMeshAndSDF(specs: dict, category: str, current_pair_name: str, SDF_data=None, ):
     """
     显示sdf值小于threshold的点，以及geometries中的内容
     """
+    mesh_dir = specs["mesh_path"]
+    IOUgt_dir = specs["IOUgt_path"]
+    visualization_options = specs["visualization_options"]
+    mesh_filename_1 = "{}_0.off".format(current_pair_name)
+    mesh_filename_2 = "{}_1.off".format(current_pair_name)
+    IOUgt_filename = "{}.txt".format(current_pair_name)
+
     geometries = []
-    mesh1 = o3d.io.read_triangle_mesh(os.path.join(mesh_dir, mesh_filename_1))
-    mesh2 = o3d.io.read_triangle_mesh(os.path.join(mesh_dir, mesh_filename_2))
+    mesh1 = o3d.io.read_triangle_mesh(os.path.join(mesh_dir, category, mesh_filename_1))
+    mesh2 = o3d.io.read_triangle_mesh(os.path.join(mesh_dir, category, mesh_filename_2))
+
     aabb1, aabb2, aabb = getTwoMeshBorder(mesh1, mesh2)
-    if visualization_option['mesh1']:
+    aabb_IOUgt = getAABBfromTwoPoints(os.path.join(IOUgt_dir, category, IOUgt_filename))
+
+    if visualization_options['mesh1']:
         # mesh1.paint_uniform_color([np.random.rand(), np.random.rand(), np.random.rand()])
         geometries.append(mesh1)
-    if visualization_option['mesh2']:
+    if visualization_options['mesh2']:
         # mesh2.paint_uniform_color([np.random.rand(), np.random.rand(), np.random.rand()])
         geometries.append(mesh2)
-    if visualization_option['aabb1']:
+    if visualization_options['aabb1']:
         geometries.append(aabb1)
-    if visualization_option['aabb2']:
+    if visualization_options['aabb2']:
         geometries.append(aabb2)
-    if visualization_option['aabb']:
+    if visualization_options['aabb']:
         geometries.append(aabb)
+    if visualization_options['aabb_IOUgt']:
+        geometries.append(aabb_IOUgt)
     if SDF_data is not None:
-        if visualization_option['sdf1']:
-            points1 = [points[0:3] for points in SDF_data if abs(points[3]) < visualization_option['sdf_threshold']]
+        if visualization_options['sdf1']:
+            points1 = [points[0:3] for points in SDF_data if abs(points[3]) < visualization_options['sdf_threshold']]
             pcd1 = o3d.geometry.PointCloud()
             pcd1.points = o3d.utility.Vector3dVector(points1)
             pcd1.paint_uniform_color([1, 0, 0])
             geometries.append(pcd1)
-        if visualization_option['sdf2']:
-            points2 = [points[0:3] for points in SDF_data if abs(points[4]) < visualization_option['sdf_threshold']]
+        if visualization_options['sdf2']:
+            points2 = [points[0:3] for points in SDF_data if abs(points[4]) < visualization_options['sdf_threshold']]
             pcd2 = o3d.geometry.PointCloud()
             pcd2.points = o3d.utility.Vector3dVector(points2)
             pcd2.paint_uniform_color([0, 1, 0])
             geometries.append(pcd2)
-        if visualization_option['ibs']:
-            points3 = [points[0:3] for points in SDF_data if abs(points[3] - points[4]) < visualization_option['sdf_threshold']]
+        if visualization_options['ibs']:
+            points3 = [points[0:3] for points in SDF_data if
+                       abs(points[3] - points[4]) < visualization_options['sdf_threshold']]
             pcd3 = o3d.geometry.PointCloud()
             pcd3.points = o3d.utility.Vector3dVector(points3)
             pcd3.paint_uniform_color([0, 0, 1])
@@ -201,28 +250,36 @@ if __name__ == '__main__':
     if not os.path.isdir(specs["sdf_path"]):
         os.mkdir(specs["sdf_path"])
 
-    # 遍历mesh_dir下的每一对mesh，每对mesh生成一个sdf groundtruth文件，写入sdf_path
-    filename_list = os.listdir(specs["mesh_path"])
-    handled_filename_list = set()
-    for filename in filename_list:
-        # 跳过不匹配正则式的文件
-        if re.match(specs["process_filename_re"], filename) is None:
-            continue
+    # mesh_dir + categories[i]下保存了对应场景的mesh数据、
+    for category in specs['categories']:
+        category_dir = os.path.join(specs["mesh_path"], category)
+        # 列出当前类别目录下所有文件名
+        filename_list = os.listdir(category_dir)
 
-        # 数据成对出现，处理完一对后将前缀记录到map中，防止重复处理
-        current_pair_name = re.match(specs["mesh_filename_re"], filename).group()
-        if current_pair_name in handled_filename_list:
-            continue
-        else:
-            handled_filename_list.add(current_pair_name)
+        # 记录已处理过的文件名
+        handled_filename_list = set()
+        for filename in filename_list:
+            file_absPath = os.path.join(category_dir, filename)
+            #  跳过非文件
+            if not os.path.isfile(file_absPath):
+                continue
+            # 跳过不匹配正则式的文件
+            if re.match(specs["process_filename_re"], filename) is None:
+                continue
 
-        mesh_filename_1 = "{}_0.off".format(current_pair_name)
-        mesh_filename_2 = "{}_1.off".format(current_pair_name)
-        sdf_filename = "{}.npz".format(current_pair_name)
-        SDF_data = generateSDF(specs["mesh_path"], mesh_filename_1, mesh_filename_2, specs["sample_option"])
+            # 数据成对出现，处理完一对后将前缀记录到map中，防止重复处理
+            current_pair_name = re.match(specs["mesh_filename_re"], filename).group()
+            if current_pair_name in handled_filename_list:
+                continue
+            else:
+                handled_filename_list.add(current_pair_name)
 
-        if specs["save_data"]:
-            category = re.match(specs["category_re"], current_pair_name).group()
-            saveSDFData(specs["sdf_path"], category, sdf_filename, SDF_data)
-        if specs["visualize"]:
-            visualizeMeshAndSDF(specs["mesh_path"], mesh_filename_1, mesh_filename_2, SDF_data, specs["visualization_option"])
+            print('current file: ', filename)
+
+            sdf_filename = "{}.npz".format(current_pair_name)
+            SDF_data = generateSDF(specs, category, current_pair_name)
+
+            if specs["save_data"]:
+                saveSDFData(specs["sdf_path"], category, sdf_filename, SDF_data)
+            if specs["visualize"]:
+                visualizeMeshAndSDF(specs, category, current_pair_name, SDF_data)

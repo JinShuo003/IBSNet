@@ -29,7 +29,8 @@ class ResnetBlockFC(nn.Module):
         # Submodules
         self.fc_0 = nn.Linear(size_in, size_h)
         self.fc_1 = nn.Linear(size_h, size_out)
-        self.actvn = nn.ReLU()
+        self.relu1 = nn.ReLU()
+        self.relu2 = nn.ReLU()
 
         if size_in == size_out:
             self.shortcut = None
@@ -39,8 +40,8 @@ class ResnetBlockFC(nn.Module):
         nn.init.zeros_(self.fc_1.weight)
 
     def forward(self, x):
-        net = self.fc_0(self.actvn(x))
-        dx = self.fc_1(self.actvn(net))
+        net = self.fc_0(self.relu1(x))
+        dx = self.fc_1(self.relu2(net))
 
         if self.shortcut is not None:
             x_s = self.shortcut(x)
@@ -125,34 +126,45 @@ class Decoder(nn.Module):
         def make_sequence():
             return []
 
+        # 定义每个全连接层的输入输出维度
         dims = [latent_size + 3] + dims + [2]
-
+        # 全连接层数
         self.num_layers = len(dims)
+        # 是否进行weight normalization
+        self.weight_norm = weight_norm
+        # 进行normalization的层（可能是batch norm或weight norm）
         self.norm_layers = norm_layers
+        # Decoder的输入拼接到第几个线性层的输入
         self.latent_in = latent_in
+        # 是否对latent_code进行dropout
         self.latent_dropout = latent_dropout
         if self.latent_dropout:
             self.lat_dp = nn.Dropout(0.2)
-
+        # 是否所有层都拼接xyz
         self.xyz_in_all = xyz_in_all
-        self.weight_norm = weight_norm
 
+        # 根据读取到的配置参数生成全部线性层
         for layer in range(0, self.num_layers - 1):
+            # 处理跳层，跳层处的out_dim单独处理，获取out_dim
             if layer + 1 in latent_in:
                 out_dim = dims[layer + 1] - dims[0]
             else:
                 out_dim = dims[layer + 1]
+                # 是否每层都拼接xyz
                 if self.xyz_in_all and layer != self.num_layers - 2:
                     out_dim -= 3
+            # 若需要进行weight_normalization
             if weight_norm and layer in self.norm_layers:
                 setattr(
                     self,
                     "lin" + str(layer),
                     nn.utils.weight_norm(nn.Linear(dims[layer], out_dim)),
                 )
+            # 不进行weight_normalization
             else:
                 setattr(self, "lin" + str(layer), nn.Linear(dims[layer], out_dim))
 
+            # 不进行weight_norm，并且设定了某些层需要norm，则生成batch norm层
             if (
                 (not weight_norm)
                 and self.norm_layers is not None
@@ -160,43 +172,55 @@ class Decoder(nn.Module):
             ):
                 setattr(self, "bn" + str(layer), nn.LayerNorm(out_dim))
 
+        # 是否使用tanh
         self.use_tanh = use_tanh
         if use_tanh:
             self.tanh = nn.Tanh()
         self.relu = nn.ReLU()
 
+        # dropout的概率
         self.dropout_prob = dropout_prob
+        # 进行dropout的层
         self.dropout = dropout
+        # tanh层
         self.th = nn.Tanh()
 
     # input: N x (L+3)
     def forward(self, input):
+        # print('input.shape[2]', input.shape[2])
+
+        # 获取xyz
         xyz = input[:, -3:]
 
+        input_size_2 = input.size(2)
+
         # 如果需要对latent code进行dropout，则先将latent code 切分出来，drop完毕后再与坐标拼接
-        if input.shape[1] > 3 and self.latent_dropout:
+        # if input_size_2 > 3 and self.latent_dropout:
+        if self.latent_dropout:
             latent_vecs = input[:, :-3]
             latent_vecs = F.dropout(latent_vecs, p=0.2, training=self.training)
             x = torch.cat([latent_vecs, xyz], 1)
         else:
             x = input
 
+        # 遍历所有层
         for layer in range(0, self.num_layers - 1):
             # 根据层号获取层
             lin = getattr(self, "lin" + str(layer))
-            # latent_in存储的是跳层连接的层号
+            # 当前层需要拼接latent_code
             if layer in self.latent_in:
                 x = torch.cat([x, input], 2)
-            # 是否每层都需要拼接坐标点
+            # 若设置了所有层都拼接xyz
             elif layer != 0 and self.xyz_in_all:
                 x = torch.cat([x, xyz], 1)
-            # 当前层进行运算
+            # 当前线性层进行运算
             x = lin(x)
             # 如果最后一层需要进行tanh
             if layer == self.num_layers - 2 and self.use_tanh:
                 x = self.tanh(x)
             # 在最后一层之前，进行normalization和dropout
             if layer < self.num_layers - 2:
+                # 进行batch norm
                 if (
                     self.norm_layers is not None
                     and layer in self.norm_layers
@@ -205,6 +229,7 @@ class Decoder(nn.Module):
                     bn = getattr(self, "bn" + str(layer))
                     x = bn(x)
                 x = self.relu(x)
+                # 进行dropout
                 if self.dropout is not None and layer in self.dropout:
                     x = F.dropout(x, p=self.dropout_prob, training=self.training)
 
@@ -224,16 +249,18 @@ class IBSNet(nn.Module):
         self.num_samp_per_scene = num_samp_per_scene
 
     def forward(self, x_obj1, x_obj2, xyz):
+        # print("x_obj1.shape: ", x_obj1.shape)
+        # print("x_obj2.shape: ", x_obj2.shape)
+        # print("xyz.shape: ", xyz.shape)
+
         x_obj1 = self.encoder_obj1(x_obj1)
-        # latent_obj1 = x_obj1.repeat_interleave(self.num_samp_per_scene, dim=0)
         latent_obj1 = x_obj1.reshape(-1, 1, x_obj1.shape[1]).repeat(1, self.num_samp_per_scene, 1)
 
         x_obj2 = self.encoder_obj2(x_obj2)
-        # latent_obj2 = x_obj2.repeat_interleave(self.num_samp_per_scene, dim=0)
-        latent_obj2 = x_obj2.reshape(-1, 1, x_obj1.shape[1]).repeat(1, self.num_samp_per_scene, 1)
+        latent_obj2 = x_obj2.reshape(-1, 1, x_obj2.shape[1]).repeat(1, self.num_samp_per_scene, 1)
 
         latent = torch.cat([latent_obj1, latent_obj2], 2)
 
         decoder_inputs = torch.cat([latent, xyz], 2)
-
+        # print("decoder_inputs.type: ", decoder_inputs.dtype)
         return self.decoder(decoder_inputs)

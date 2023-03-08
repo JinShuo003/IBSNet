@@ -3,6 +3,7 @@ import deep_sdf
 import deep_sdf.workspace as ws
 import json
 from torch.utils.tensorboard import SummaryWriter
+import open3d as o3d
 
 from networks.models import *
 
@@ -52,44 +53,55 @@ class WarmupLearningRateSchedule(LearningRateSchedule):
 def get_learning_rate_schedules(specs):
     schedule_specs = specs["LearningRateSchedule"]
 
-    schedules = []
+    if schedule_specs["Type"] == "Step":
+        schedule = StepLearningRateSchedule(schedule_specs["Initial"], schedule_specs["Interval"], schedule_specs["Factor"])
+    elif schedule_specs["Type"] == "Warmup":
+        schedule = WarmupLearningRateSchedule( schedule_specs["Initial"], schedule_specs["Final"], schedule_specs["Length"])
+    elif schedule_specs["Type"] == "Constant":
+        schedule = ConstantLearningRateSchedule(schedule_specs["Value"])
+    else:
+        raise Exception('no known learning rate schedule of type "{}"'.format(schedule_specs["Type"]))
 
-    for schedule_specs in schedule_specs:
+    return schedule
 
-        if schedule_specs["Type"] == "Step":
-            schedules.append(
-                StepLearningRateSchedule(
-                    schedule_specs["Initial"],
-                    schedule_specs["Interval"],
-                    schedule_specs["Factor"],
-                )
-            )
-        elif schedule_specs["Type"] == "Warmup":
-            schedules.append(
-                WarmupLearningRateSchedule(
-                    schedule_specs["Initial"],
-                    schedule_specs["Final"],
-                    schedule_specs["Length"],
-                )
-            )
-        elif schedule_specs["Type"] == "Constant":
-            schedules.append(ConstantLearningRateSchedule(schedule_specs["Value"]))
 
-        else:
-            raise Exception(
-                'no known learning rate schedule of type "{}"'.format(
-                    schedule_specs["Type"]
-                )
-            )
+def visualize_data(pcd1, pcd2, sdf_data):
+    pcd1_np = pcd1.numpy()[0, :, :].reshape(-1, 3)
+    pcd2_np = pcd2.numpy()[0, :, :].reshape(-1, 3)
+    sdf_np = sdf_data.numpy()[0, :, :].reshape(-1, 5)
 
-    return schedules
+    surface_points1 = [points[0:3] for points in sdf_np if abs(points[3]) < 0.1]
+    surface_points2 = [points[0:3] for points in sdf_np if abs(points[4]) < 0.1]
+    surface_points_ibs = [points[0:3] for points in sdf_np if abs(points[3] - points[4]) < 0.1]
+
+    pcd1_o3d = o3d.geometry.PointCloud()
+    pcd2_o3d = o3d.geometry.PointCloud()
+    sdf1_o3d = o3d.geometry.PointCloud()
+    sdf2_o3d = o3d.geometry.PointCloud()
+    ibs_o3d = o3d.geometry.PointCloud()
+
+    pcd1_o3d.points = o3d.utility.Vector3dVector(pcd1_np)
+    pcd2_o3d.points = o3d.utility.Vector3dVector(pcd2_np)
+    sdf1_o3d.points = o3d.utility.Vector3dVector(surface_points1)
+    sdf2_o3d.points = o3d.utility.Vector3dVector(surface_points2)
+    ibs_o3d.points = o3d.utility.Vector3dVector(surface_points_ibs)
+
+    pcd1_o3d.paint_uniform_color([1, 0, 0])
+    pcd2_o3d.paint_uniform_color([1, 0, 0])
+    sdf1_o3d.paint_uniform_color([0, 1, 0])
+    sdf2_o3d.paint_uniform_color([0, 1, 0])
+    ibs_o3d.paint_uniform_color([0, 0, 1])
+
+    o3d.visualization.draw_geometries([pcd1_o3d, pcd2_o3d, sdf1_o3d, sdf2_o3d, ibs_o3d])
 
 
 def main_function():
 
     def adjust_learning_rate(lr_schedules, optimizer, epoch):
-        for i, param_group in enumerate(optimizer.param_groups):
-            param_group["lr"] = lr_schedules[i].get_learning_rate(epoch)
+        # print(optimizer.param_groups)
+        optimizer.param_groups[0]["lr"] = lr_schedules.get_learning_rate(epoch)
+        # for i, param_group in enumerate(optimizer.param_groups):
+        #     param_group["lr"] = lr_schedules[i].get_learning_rate(epoch)
 
     experiment_directory = './data'
     specs = ws.load_experiment_specifications(experiment_directory)
@@ -130,26 +142,17 @@ def main_function():
     input_pcd2_shape = torch.randn(1, 1024, 3)
     input_xyz_shape = torch.randn(1, 30000, 3)
 
-    print('here')
     if torch.cuda.is_available():
         IBS_Net = IBS_Net.cuda()
         input_pcd1_shape = input_pcd1_shape.cuda()
         input_pcd2_shape = input_pcd2_shape.cuda()
         input_xyz_shape = input_xyz_shape.cuda()
-        print('here')
 
     writer.add_graph(IBS_Net, (input_pcd1_shape, input_pcd2_shape, input_xyz_shape))
 
     lr_schedules = get_learning_rate_schedules(specs)
 
-    optimizer = torch.optim.Adam(
-        [
-            {
-                "params": IBS_Net.parameters(),
-                "lr": lr_schedules[0].get_learning_rate(0),
-            }
-        ]
-    )
+    optimizer = torch.optim.Adam(IBS_Net.parameters(), lr_schedules.get_learning_rate(0))
 
     loss_udf1 = torch.nn.L1Loss(reduction="sum")
     loss_udf2 = torch.nn.L1Loss(reduction="sum")
@@ -159,11 +162,13 @@ def main_function():
         IBS_Net.train()
 
         adjust_learning_rate(lr_schedules, optimizer, epoch)
-        print('-------------learning rate: {}---------------'.format(lr_schedules[0].get_learning_rate(epoch)))
+        print('-------------learning rate: {}---------------'.format(lr_schedules.get_learning_rate(epoch)))
 
         epoch_total_loss = 0
         for pcd1, pcd2, sdf_data, indices in sdf_loader:
             sdf_data = sdf_data.reshape(scene_per_batch, -1, 5)
+
+            # visualize_data(pcd1, pcd2, sdf_data)
 
             pcd1.requires_grad = False
             pcd2.requires_grad = False

@@ -1,21 +1,38 @@
 {
-  "mesh_path": "../data/mesh",
-  "pcd_path": "../data/pcd/IBSNet",
-  "sdf_path": "../data/pcd/SdfSamples/IBSNet",
-  "IOUgt_path": "../data/boudingBox",
+  "mesh_dir": "../data/mesh",
+  "pcd_dir": "../data/pcd/IBSNet",
+  "sdf_dir": "../data/SdfSamples/IBSNet",
+  "IOUgt_dir": "../data/boundingBox",
   "categories": ["scene1","scene2","scene3","scene4","scene5","scene6","scene7","scene8","scene9"],
   "filename_re": "scene\\d\\.\\d{4}",
   "process_filename_re": "scene1",
   "visualization_options": {
     "sdf_threshold": 0.3,
-    "mesh1": false,
-    "mesh2": true,
-    "aabb1": true,
-    "aabb2": true,
-    "aabb": true,
-    "aabb_IOUgt": true,
-    "sdf1": true,
-    "sdf2": true,
-    "ibs": true
+    "geometries": {
+      "mesh1": true,
+      "mesh2": true,
+      "pcd1": false,
+      "pcd2": false,
+      "aabb1": true,
+      "aabb2": true,
+      "aabb": true,
+      "aabb_IOUgt": true,
+      "sdf1": true,
+      "sdf2": true,
+      "ibs": true
+    },
+    "colors": {
+      "mesh1": [0.7, 0.3, 0.3],
+      "mesh2": [0.3, 0.7, 0.3],
+      "pcd1": [0.3, 0.7, 0.7],
+      "pcd2": [0.7, 0.3, 0.7],
+      "aabb1": [1, 0, 0],
+      "aabb2": [0, 1, 0],
+      "aabb_total": [0, 0, 1],
+      "aabb_IOUgt": [0, 0, 0],
+      "sdf1": [0.3, 1, 0.3],
+      "sdf2": [1, 0.3, 0.3],
+      "ibs": [0, 0, 1]
+    }
   }
 }

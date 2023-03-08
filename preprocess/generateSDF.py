@@ -1,9 +1,10 @@
+"""
+从mesh生成sdf groundtruth的工具，配置好./config/generateSDF.json后可以按场景生成sdf的groundtruth
+"""
 import os
 import re
 import open3d as o3d
-import numpy as np
 from utils import *
-import csv
 import json
 
 
@@ -171,62 +172,6 @@ def getRandomPointsSeparately(aabb1, aabb2, aabb_IOU, sample_options: dict):
     return np.concatenate([random_points_mesh1_, random_points_mesh2_, random_points_mesh_IOUgt_], axis=0)
 
 
-def visualizeMeshAndSDF(specs: dict, category: str, current_pair_name: str, SDF_data=None, ):
-    """
-    显示sdf值小于threshold的点，以及geometries中的内容
-    """
-    mesh_dir = specs["mesh_path"]
-    IOUgt_dir = specs["IOUgt_path"]
-    visualization_options = specs["visualization_options"]
-    mesh_filename_1 = "{}_0.off".format(current_pair_name)
-    mesh_filename_2 = "{}_1.off".format(current_pair_name)
-    IOUgt_filename = "{}.txt".format(current_pair_name)
-
-    geometries = []
-    mesh1 = o3d.io.read_triangle_mesh(os.path.join(mesh_dir, category, mesh_filename_1))
-    mesh2 = o3d.io.read_triangle_mesh(os.path.join(mesh_dir, category, mesh_filename_2))
-
-    aabb1, aabb2, aabb = getTwoMeshBorder(mesh1, mesh2)
-    aabb_IOUgt = getAABBfromTwoPoints(os.path.join(IOUgt_dir, category, IOUgt_filename))
-
-    if visualization_options['mesh1']:
-        # mesh1.paint_uniform_color([np.random.rand(), np.random.rand(), np.random.rand()])
-        geometries.append(mesh1)
-    if visualization_options['mesh2']:
-        # mesh2.paint_uniform_color([np.random.rand(), np.random.rand(), np.random.rand()])
-        geometries.append(mesh2)
-    if visualization_options['aabb1']:
-        geometries.append(aabb1)
-    if visualization_options['aabb2']:
-        geometries.append(aabb2)
-    if visualization_options['aabb']:
-        geometries.append(aabb)
-    if visualization_options['aabb_IOUgt']:
-        geometries.append(aabb_IOUgt)
-    if SDF_data is not None:
-        if visualization_options['sdf1']:
-            points1 = [points[0:3] for points in SDF_data if abs(points[3]) < visualization_options['sdf_threshold']]
-            pcd1 = o3d.geometry.PointCloud()
-            pcd1.points = o3d.utility.Vector3dVector(points1)
-            pcd1.paint_uniform_color([1, 0, 0])
-            geometries.append(pcd1)
-        if visualization_options['sdf2']:
-            points2 = [points[0:3] for points in SDF_data if abs(points[4]) < visualization_options['sdf_threshold']]
-            pcd2 = o3d.geometry.PointCloud()
-            pcd2.points = o3d.utility.Vector3dVector(points2)
-            pcd2.paint_uniform_color([0, 1, 0])
-            geometries.append(pcd2)
-        if visualization_options['ibs']:
-            points3 = [points[0:3] for points in SDF_data if
-                       abs(points[3] - points[4]) < visualization_options['sdf_threshold']]
-            pcd3 = o3d.geometry.PointCloud()
-            pcd3.points = o3d.utility.Vector3dVector(points3)
-            pcd3.paint_uniform_color([0, 0, 1])
-            geometries.append(pcd3)
-
-    o3d.visualization.draw_geometries(geometries)
-
-
 def saveSDFData(sdf_dir: str, category: str, sdf_filename: str, SDF_data):
     # 目录不存在则创建
     if not os.path.isdir(os.path.join(sdf_dir, category)):
@@ -279,7 +224,4 @@ if __name__ == '__main__':
             sdf_filename = "{}.npz".format(current_pair_name)
             SDF_data = generateSDF(specs, category, current_pair_name)
 
-            if specs["save_data"]:
-                saveSDFData(specs["sdf_path"], category, sdf_filename, SDF_data)
-            if specs["visualize"]:
-                visualizeMeshAndSDF(specs, category, current_pair_name, SDF_data)
+            saveSDFData(specs["sdf_path"], category, sdf_filename, SDF_data)

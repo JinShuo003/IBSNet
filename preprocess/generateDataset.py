@@ -1,3 +1,6 @@
+"""
+根据./config/generateDataset.json中的设置，划分测试集、训练集、验证集，并保存划分好的结果
+"""
 import json
 import os
 import re

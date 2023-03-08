@@ -1,3 +1,6 @@
+"""
+从mesh生成点云的工具，配置好./config/generatePointCloud.json后可以按场景生成点云
+"""
 import os
 import re
 import open3d as o3d

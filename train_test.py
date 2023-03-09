@@ -112,6 +112,10 @@ def main_function():
     num_data_loader_threads = get_spec_with_default(specs, "DataLoaderThreads", 1)
     latent_size = specs["CodeLength"]
     epoch_num = specs["NumEpochs"]
+    clamp_dist = specs["ClampingDistance"]
+    minT = -clamp_dist
+    maxT = clamp_dist
+
     writer = SummaryWriter('./logs')
 
     with open(train_split_file, "r") as f:
@@ -136,7 +140,7 @@ def main_function():
     encoder_obj1 = ResnetPointnet()
     encoder_obj2 = ResnetPointnet()
     decoder = Decoder(latent_size, **specs["NetworkSpecs"])
-    IBS_Net = IBSNet(encoder_obj1, encoder_obj2, decoder, num_samp_per_scene).cuda()
+    IBS_Net = IBSNet(encoder_obj1, encoder_obj2, decoder, num_samp_per_scene)
 
     input_pcd1_shape = torch.randn(1, 1024, 3)
     input_pcd2_shape = torch.randn(1, 1024, 3)
@@ -157,12 +161,17 @@ def main_function():
     loss_udf1 = torch.nn.L1Loss(reduction="sum")
     loss_udf2 = torch.nn.L1Loss(reduction="sum")
 
-    for epoch in range(epoch_num):
-        print('-------------epoch: {}---------------'.format(epoch))
-        IBS_Net.train()
+    gt_file = open('./logs/gt.txt', 'w+')
+    pred_file = open('./logs/pred.txt', 'w+')
 
+    for epoch in range(epoch_num):
+        gt_file.write('epoch: {}\n'.format(epoch))
+        pred_file.write('epoch: {}\n'.format(epoch))
+
+        IBS_Net.train()
         adjust_learning_rate(lr_schedules, optimizer, epoch)
-        print('-------------learning rate: {}---------------'.format(lr_schedules.get_learning_rate(epoch)))
+
+        print('-------------epoch: {}, learning rate: {}---------------'.format(epoch, lr_schedules.get_learning_rate(epoch)))
 
         epoch_total_loss = 0
         for pcd1, pcd2, sdf_data, indices in sdf_loader:
@@ -181,11 +190,27 @@ def main_function():
             xyz = xyz.cuda()
 
             udf_gt1 = sdf_data[:, :, 3].unsqueeze(2)
+            udf_gt1 = torch.clamp(udf_gt1, minT, maxT)
             udf_gt2 = sdf_data[:, :, 4].unsqueeze(2)
+            udf_gt2 = torch.clamp(udf_gt2, minT, maxT)
+            for i in range(len(udf_gt1)):
+                gt_file.write(str(udf_gt1.numpy()[i]))
+            gt_file.write('\n')
+            for i in range(len(udf_gt1)):
+                gt_file.write(str(udf_gt2.numpy()[i]))
+            gt_file.write('\n')
 
             out = IBS_Net(pcd1, pcd2, xyz)
             udf_pred1 = out[:, :, 0].unsqueeze(2)
+            udf_pred1 = torch.clamp(udf_pred1, minT, maxT)
             udf_pred2 = out[:, :, 1].unsqueeze(2)
+            udf_pred2 = torch.clamp(udf_pred2, minT, maxT)
+            for i in range(len(udf_gt1)):
+                pred_file.write(str(udf_pred1.cpu().detach().numpy()[i]))
+            gt_file.write('\n')
+            for i in range(len(udf_gt1)):
+                pred_file.write(str(udf_pred2.cpu().detach().numpy()[i]))
+            gt_file.write('\n')
 
             loss_1 = loss_udf1(udf_pred1, udf_gt1.cuda()) / num_samp_per_scene
             loss_2 = loss_udf2(udf_pred2, udf_gt2.cuda()) / num_samp_per_scene

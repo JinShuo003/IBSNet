@@ -107,7 +107,7 @@ class ResnetPointnet(nn.Module):
 
 
 # Deep SDF的Decoder
-class Decoder(nn.Module):
+class Decoder_(nn.Module):
     def __init__(
         self,
         latent_size,
@@ -238,6 +238,36 @@ class Decoder(nn.Module):
             x = self.th(x)
 
         return x
+
+
+# 简化版Deep SDF的Decoder
+class Decoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.linear1 = nn.Linear(259, 512)
+        self.linear2 = nn.Linear(512, 512)
+        self.linear3 = nn.Linear(512, 512)
+        self.linear4 = nn.Linear(512, 253)
+        self.linear5 = nn.Linear(512, 512)
+        self.linear6 = nn.Linear(512, 512)
+        self.linear7 = nn.Linear(512, 512)
+        self.linear8 = nn.Linear(512, 2)
+
+    # input: N x (L+3)
+    def forward(self, input):
+        x = nn.LeakyReLU(self.linear1(input))
+        x = nn.LeakyReLU(self.linear2(x))
+        x = nn.LeakyReLU(self.linear3(x))
+        x = nn.LeakyReLU(self.linear4(x))
+        # 第四层的输出拼接上input
+        x = torch.cat([x, input], 2)
+        x = nn.LeakyReLU(self.linear5(x))
+        x = nn.LeakyReLU(self.linear6(x))
+        x = nn.LeakyReLU(self.linear7(x))
+        result = self.linear8(x)
+
+        return result
 
 
 class IBSNet(nn.Module):

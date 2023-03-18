@@ -1,0 +1,15 @@
+{
+  "mesh_path": "..\\data\\mesh",
+  "pcd_src_path": "..\\data\\pcd\\IBSNet",
+  "pcd_save_path": "..\\data\\pcd\\IBSNet_augmentation",
+  "sdf_src_path": "..\\data\\SdfSamples\\IBSNet",
+  "sdf_save_path": "..\\data\\SdfSamples\\IBSNet_augmentation",
+  "mesh_filename_re": "scene\\d\\.\\d{4}",
+  "categories": ["scene1","scene2","scene3","scene4","scene5","scene6","scene7","scene8","scene9"],
+  "process_filename_re": "scene",
+  "save_data": true,
+  "visualization": false,
+  "augmentation_options": {
+    "rotate_num": 12
+  }
+}

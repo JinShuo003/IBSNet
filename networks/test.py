@@ -7,23 +7,23 @@ import numpy as np
 work_dir = "../data"
 specs = workspace.load_experiment_specifications(work_dir)
 
+sdf_data = np.array([[[1, 2, 3, 4, 5],
+                     [3, 5, 1, 2, 4],
+                     [5, 1, 0, 9, 4],
+                     [9, 8, 1, 2, 3]],
+                    [[7, 2, 10, 4, 5],
+                     [9, 5, 1, 2, 4],
+                     [6, 1, 0, 9, 4],
+                     [-2, 8, 1, 2, 3]]])
+sdf_data = torch.from_numpy(sdf_data)
+sdf_data = sdf_data.reshape(-1, 5)
+print(sdf_data.shape)
 
-obj1 = torch.Tensor(10, 1024, 3)
-print(obj1.shape)
+x_obj1 = np.array([[1, 2, 3, 4, 5, 6],
+                   [10, 9, 8, 7, 6, 5]])
+x_obj1 = torch.from_numpy(x_obj1)
 
-# obj2 = torch.Tensor(10, 500, 3)
-# xyz = torch.Tensor(10, specs["SamplesPerScene"], 3)
-
-encoder_obj1 = ResnetPointnet()
-out = encoder_obj1(obj1)
-print(out.shape)
-
-# encoder_obj2 = ResnetPointnet()
-#
-# decoder = Decoder(specs["CodeLength"], **specs["NetworkSpecs"])
-# ibs_net = IBSNet(encoder_obj1, encoder_obj2, decoder, specs["SamplesPerScene"])
-#
-# out = ibs_net(obj1, obj2, xyz)
-# print(out.shape)
+latent_obj1 = x_obj1.repeat_interleave(4, dim=0)
+print(latent_obj1.shape)
 
 

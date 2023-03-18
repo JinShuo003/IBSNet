@@ -7,9 +7,6 @@ import re
 import json
 import numpy as np
 
-filename_re = 'scene\d\.\d{4}_\d'
-filepath_re = '.*scene\d\.\d{4}_\d.*'
-
 
 def parseConfig(config_filepath: str = './config/visualization.json'):
     with open(config_filepath, 'r') as configfile:
@@ -18,7 +15,7 @@ def parseConfig(config_filepath: str = './config/visualization.json'):
     return specs
 
 
-def getGeometriesPath(specs, category, filename_intersection):
+def getGeometriesPath(specs, category, filename_intersection, augment_index):
     geometries_path = dict()
 
     mesh_dir = specs['mesh_dir']
@@ -28,9 +25,9 @@ def getGeometriesPath(specs, category, filename_intersection):
 
     mesh1_filename = filename_intersection + '_{}.off'.format(0)
     mesh2_filename = filename_intersection + '_{}.off'.format(1)
-    pcd1_filename = filename_intersection + '_{}.ply'.format(0)
-    pcd2_filename = filename_intersection + '_{}.ply'.format(1)
-    sdf_filename = filename_intersection + '.npz'
+    pcd1_filename = filename_intersection + '_rotate{}_{}.ply'.format(augment_index, 0)
+    pcd2_filename = filename_intersection + '_rotate{}_{}.ply'.format(augment_index, 1)
+    sdf_filename = filename_intersection + '_rotate{}.npz'.format(augment_index)
     IOUgt_filename = filename_intersection + '.txt'
 
     geometries_path['mesh1'] = os.path.join(mesh_dir, category, mesh1_filename)
@@ -112,39 +109,42 @@ def getTwoMeshBorder(mesh1, mesh2):
 
 
 def visualize(specs, category, filename_intersection):
-    container = dict()
-    geometries = []
-    geometries_path = getGeometriesPath(specs, category, filename_intersection)
-    mesh1 = get_mesh(specs, geometries_path['mesh1'], 'mesh1')
-    mesh2 = get_mesh(specs, geometries_path['mesh2'], 'mesh2')
-    pcd1 = get_pcd(specs, geometries_path['pcd1'], 'pcd1')
-    pcd2 = get_pcd(specs, geometries_path['pcd2'], 'pcd2')
-    aabb1, aabb2, aabb = getTwoMeshBorder(mesh1, mesh2)
-    IOUgt = get_IOUgt(specs, geometries_path['IOUgt'])
-    sdf1, sdf2, ibs = get_surface_points(specs, geometries_path['sdf'])
+    rotate_num = specs["augmentation_options"]["rotate_num"]
 
-    container['mesh1'] = mesh1
-    container['mesh2'] = mesh2
-    container['pcd1'] = pcd1
-    container['pcd2'] = pcd2
-    container['aabb1'] = aabb1
-    container['aabb2'] = aabb2
-    container['aabb'] = aabb
-    container['aabb_IOUgt'] = IOUgt
-    container['sdf1'] = sdf1
-    container['sdf2'] = sdf2
-    container['ibs'] = ibs
+    for i in range(rotate_num):
+        container = dict()
+        geometries = []
+        geometries_path = getGeometriesPath(specs, category, filename_intersection, i)
+        mesh1 = get_mesh(specs, geometries_path['mesh1'], 'mesh1')
+        mesh2 = get_mesh(specs, geometries_path['mesh2'], 'mesh2')
+        aabb1, aabb2, aabb = getTwoMeshBorder(mesh1, mesh2)
+        IOUgt = get_IOUgt(specs, geometries_path['IOUgt'])
+        pcd1 = get_pcd(specs, geometries_path['pcd1'], 'pcd1')
+        pcd2 = get_pcd(specs, geometries_path['pcd2'], 'pcd2')
+        sdf1, sdf2, ibs = get_surface_points(specs, geometries_path['sdf'])
 
-    for key in specs['visualization_options']['geometries']:
-        if specs['visualization_options']['geometries'][key]:
-            geometries.append(container[key])
+        container['mesh1'] = mesh1
+        container['mesh2'] = mesh2
+        container['pcd1'] = pcd1
+        container['pcd2'] = pcd2
+        container['aabb1'] = aabb1
+        container['aabb2'] = aabb2
+        container['aabb'] = aabb
+        container['aabb_IOUgt'] = IOUgt
+        container['sdf1'] = sdf1
+        container['sdf2'] = sdf2
+        container['ibs'] = ibs
 
-    o3d.visualization.draw_geometries(geometries)
+        for key in specs['visualization_options']['geometries']:
+            if specs['visualization_options']['geometries'][key]:
+                geometries.append(container[key])
+
+        o3d.visualization.draw_geometries(geometries)
 
 
 if __name__ == '__main__':
     # 获取配置参数
-    config_filepath = 'config/visualization.json'
+    config_filepath = 'config/visualization_augment.json'
     specs = parseConfig(config_filepath)
 
     handled_scenes = set()

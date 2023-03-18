@@ -1,0 +1,25 @@
+{
+  "mesh_path": "..\\data\\mesh",
+  "pcd_path": "..\\data\\pcd\\IBSNet",
+  "IOUgt_path": "..\\data\\boundingBox",
+  "sdf_path": "..\\data\\SdfSamples\\IBSNet",
+  "mesh_filename_re": "scene\\d\\.\\d{4}",
+  "categories": ["scene1","scene2","scene3","scene4","scene5","scene6","scene7","scene8","scene9"],
+  "process_filename_re": "scene",
+  "save_data": true,
+  "visualization": false,
+  "PCD_sample_options": {
+    "number_of_points": 1024,
+    "sample_method": "poisson"
+  },
+  "SDF_sample_options": {
+      "method": "uniform",
+      "points_num": 30000,
+      "scale1": 1,
+      "scale2": 1,
+      "scale_IOU": 1,
+      "proportion1": 0.2,
+      "proportion2": 0.2,
+      "proportion_IOU": 0.6
+  }
+}

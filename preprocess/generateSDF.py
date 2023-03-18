@@ -52,8 +52,25 @@ def generateSDF(specs: dict, category: str, current_pair_name):
     signed_distance1 = scene1.compute_signed_distance(query_points).numpy().reshape((-1, 1))
     signed_distance2 = scene2.compute_signed_distance(query_points).numpy().reshape((-1, 1))
 
+    # 从文件中查询当前场景的缩放系数，将坐标值和sdf值同时除以缩放系数
+    scale_filename = '{}_scale.txt'.format(category)
+    scale_path = os.path.join(specs['pcd_path'], category, scale_filename)
+    scale = 1
+    centroid = []
+    with open(scale_path, 'r') as scale_file:
+        scale_data = scale_file.readlines()
+        for line in scale_data:
+            if re.match(current_pair_name, line) is not None:
+                centroid = line.split(',')[1]
+                centroid = [float(item) for item in re.findall('\\d*\\.\\d*', centroid)]
+                centroid = np.array(centroid).reshape(3)
+                scale = float(line.split(',')[2])
+                break
     # 拼接查询点和两个SDF值
+    random_points -= centroid
     SDF_data = np.concatenate([random_points, signed_distance1, signed_distance2], axis=1)
+
+    SDF_data /= scale
     return SDF_data
 
 
@@ -188,7 +205,7 @@ def saveSDFData(sdf_dir: str, category: str, sdf_filename: str, SDF_data):
 
 if __name__ == '__main__':
     # 获取配置参数
-    configFile_path = 'config/generateSDF.json'
+    configFile_path = 'config/generatePCDandSDF.json'
     specs = parseConfig(configFile_path)
 
     # 若目录不存在则创建目录
@@ -221,7 +238,6 @@ if __name__ == '__main__':
 
             print('current file: ', filename)
 
-            sdf_filename = "{}.npz".format(current_pair_name)
             SDF_data = generateSDF(specs, category, current_pair_name)
-
+            sdf_filename = "{}.npz".format(current_pair_name)
             saveSDFData(specs["sdf_path"], category, sdf_filename, SDF_data)

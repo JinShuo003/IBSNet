@@ -6,6 +6,9 @@
   "categories": ["scene1","scene2","scene3","scene4","scene5","scene6","scene7","scene8","scene9"],
   "filename_re": "scene\\d\\.\\d{4}",
   "process_filename_re": "scene1",
+  "augmentation_options": {
+    "rotate_num": 12
+  },
   "visualization_options": {
     "sdf_threshold": 0.01,
     "geometries": {
@@ -16,7 +19,7 @@
       "aabb1": false,
       "aabb2": false,
       "aabb": false,
-      "aabb_IOUgt": true,
+      "aabb_IOUgt": false,
       "sdf1": true,
       "sdf2": true,
       "ibs": true

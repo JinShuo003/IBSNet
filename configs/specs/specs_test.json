@@ -1,0 +1,10 @@
+{
+    "Description" : "Compute two SDF fields",
+    "DataSource" : "data",
+    "TestSplit" : "configs/test_split/test_scene1.json",
+    "TestResult" : "test_result",
+    "Device" : 0,
+    "SamplesPerScene" : 30000,
+    "ScenesPerBatch" : 4,
+    "DataLoaderThreads" : 4
+}

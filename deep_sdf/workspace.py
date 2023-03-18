@@ -12,7 +12,6 @@ logs_filename = "Logs.pth"
 reconstructions_subdir = "Reconstructions"
 reconstruction_meshes_subdir = "Meshes"
 reconstruction_codes_subdir = "Codes"
-specifications_filename = "specs.json"
 data_source_map_filename = ".datasources.json"
 evaluation_subdir = "Evaluation"
 sdf_samples_subdir = "SdfSamples"
@@ -22,16 +21,12 @@ normalization_param_subdir = "NormalizationParameters"
 training_meshes_subdir = "TrainingMeshes"
 
 
-def load_experiment_specifications(experiment_directory):
+def load_experiment_specifications(experiment_config_file):
 
-    filename = os.path.join(experiment_directory, specifications_filename)
-    if not os.path.isfile(filename):
-        raise Exception(
-            "The experiment directory ({}) does not include specifications file "
-            + '"specs.json"'.format(experiment_directory)
-        )
+    if not os.path.isfile(experiment_config_file):
+        raise Exception("The experiment config file does not exist")
 
-    return json.load(open(filename))
+    return json.load(open(experiment_config_file))
 
 
 def load_model_parameters(experiment_directory, checkpoint, decoder):

@@ -4,3 +4,7 @@ data/
 */__pycache__
 .vscode/
 */sftp.json
+/tensorboard_logs
+*.pth
+events*
+/test_result

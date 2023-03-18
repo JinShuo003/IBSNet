@@ -59,6 +59,7 @@ class ResnetPointnet(nn.Module):
         dim (int): input points dimension
         hidden_dim (int): hidden dimension of the network
     """
+
     def __init__(self, c_dim=128, dim=3, hidden_dim=128):
         super().__init__()
         self.c_dim = c_dim
@@ -107,19 +108,19 @@ class ResnetPointnet(nn.Module):
 
 
 # Deep SDF的Decoder
-class Decoder_(nn.Module):
+class Decoder(nn.Module):
     def __init__(
-        self,
-        latent_size,
-        dims,
-        dropout=None,
-        dropout_prob=0.0,
-        norm_layers=(),
-        latent_in=(),
-        weight_norm=False,
-        xyz_in_all=None,
-        use_tanh=False,
-        latent_dropout=False,
+            self,
+            latent_size,
+            dims,
+            dropout=None,
+            dropout_prob=0.0,
+            norm_layers=(),
+            latent_in=(),
+            weight_norm=False,
+            xyz_in_all=None,
+            use_tanh=False,
+            latent_dropout=False,
     ):
         super(Decoder, self).__init__()
 
@@ -166,9 +167,9 @@ class Decoder_(nn.Module):
 
             # 不进行weight_norm，并且设定了某些层需要norm，则生成batch norm层
             if (
-                (not weight_norm)
-                and self.norm_layers is not None
-                and layer in self.norm_layers
+                    (not weight_norm)
+                    and self.norm_layers is not None
+                    and layer in self.norm_layers
             ):
                 setattr(self, "bn" + str(layer), nn.LayerNorm(out_dim))
 
@@ -192,8 +193,6 @@ class Decoder_(nn.Module):
         # 获取xyz
         xyz = input[:, -3:]
 
-        input_size_2 = input.size(2)
-
         # 如果需要对latent code进行dropout，则先将latent code 切分出来，drop完毕后再与坐标拼接
         # if input_size_2 > 3 and self.latent_dropout:
         if self.latent_dropout:
@@ -209,7 +208,7 @@ class Decoder_(nn.Module):
             lin = getattr(self, "lin" + str(layer))
             # 当前层需要拼接latent_code
             if layer in self.latent_in:
-                x = torch.cat([x, input], 2)
+                x = torch.cat([x, input], 1)
             # 若设置了所有层都拼接xyz
             elif layer != 0 and self.xyz_in_all:
                 x = torch.cat([x, xyz], 1)
@@ -222,9 +221,9 @@ class Decoder_(nn.Module):
             if layer < self.num_layers - 2:
                 # 进行batch norm
                 if (
-                    self.norm_layers is not None
-                    and layer in self.norm_layers
-                    and not self.weight_norm
+                        self.norm_layers is not None
+                        and layer in self.norm_layers
+                        and not self.weight_norm
                 ):
                     bn = getattr(self, "bn" + str(layer))
                     x = bn(x)
@@ -240,34 +239,121 @@ class Decoder_(nn.Module):
         return x
 
 
-# 简化版Deep SDF的Decoder
-class Decoder(nn.Module):
-    def __init__(self):
-        super().__init__()
+class CombinedDecoder(nn.Module):
+    def __init__(
+        self,
+        latent_size,
+        dims,
+        dropout=None,
+        dropout_prob=0.0,
+        norm_layers=(),
+        latent_in=(),
+        weight_norm=False,
+        xyz_in_all=None,
+        use_tanh=False,
+        latent_dropout=False,
+        use_classifier=False,
+    ):
+        super(CombinedDecoder, self).__init__()
 
-        self.linear1 = nn.Linear(259, 512)
-        self.linear2 = nn.Linear(512, 512)
-        self.linear3 = nn.Linear(512, 512)
-        self.linear4 = nn.Linear(512, 253)
-        self.linear5 = nn.Linear(512, 512)
-        self.linear6 = nn.Linear(512, 512)
-        self.linear7 = nn.Linear(512, 512)
-        self.linear8 = nn.Linear(512, 2)
+        def make_sequence():
+            return []
+
+        dims = [latent_size + 3] + dims + [2]  # <<<< 2 outputs instead of 1.
+
+        self.num_layers = len(dims)
+        self.norm_layers = norm_layers
+        self.latent_in = latent_in
+        self.latent_dropout = latent_dropout
+        if self.latent_dropout:
+            self.lat_dp = nn.Dropout(0.2)
+
+        self.xyz_in_all = xyz_in_all
+        self.weight_norm = weight_norm
+        self.use_classifier = use_classifier
+
+        for layer in range(0, self.num_layers - 1):
+            if layer + 1 in latent_in:
+                out_dim = dims[layer + 1] - dims[0]
+            else:
+                out_dim = dims[layer + 1]
+                if self.xyz_in_all and layer != self.num_layers - 2:
+                    out_dim -= 3
+            # print("out dim  out_dim)
+
+            if weight_norm and layer in self.norm_layers:
+                setattr(
+                    self,
+                    "lin" + str(layer),
+                    nn.utils.weight_norm(nn.Linear(dims[layer], out_dim)),
+                )
+            else:
+                setattr(self, "lin" + str(layer), nn.Linear(dims[layer], out_dim))
+
+            if (
+                (not weight_norm)
+                and self.norm_layers is not None
+                and layer in self.norm_layers
+            ):
+                setattr(self, "bn" + str(layer), nn.LayerNorm(out_dim))
+
+            # print(dims[layer], out_dim)
+            # classifier
+            if self.use_classifier and layer == self.num_layers - 2:
+                # print("dim last_layer", dims[layer])
+                self.classifier_head = nn.Linear(dims[layer], self.num_class)
+
+        self.use_tanh = use_tanh
+        if use_tanh:
+            self.tanh = nn.Tanh()
+        self.relu = nn.ReLU()
+
+        self.dropout_prob = dropout_prob
+        self.dropout = dropout
+        self.th = nn.Tanh()
 
     # input: N x (L+3)
     def forward(self, input):
-        x = nn.LeakyReLU(self.linear1(input))
-        x = nn.LeakyReLU(self.linear2(x))
-        x = nn.LeakyReLU(self.linear3(x))
-        x = nn.LeakyReLU(self.linear4(x))
-        # 第四层的输出拼接上input
-        x = torch.cat([x, input], 2)
-        x = nn.LeakyReLU(self.linear5(x))
-        x = nn.LeakyReLU(self.linear6(x))
-        x = nn.LeakyReLU(self.linear7(x))
-        result = self.linear8(x)
+        xyz = input[:, -3:]
 
-        return result
+        if input.shape[1] > 3 and self.latent_dropout:
+            latent_vecs = input[:, :-3]
+            latent_vecs = F.dropout(latent_vecs, p=0.2, training=self.training)
+            x = torch.cat([latent_vecs, xyz], 1)
+        else:
+            x = input
+
+        for layer in range(0, self.num_layers - 1):
+
+            lin = getattr(self, "lin" + str(layer))
+            if layer in self.latent_in:
+                x = torch.cat([x, input], 1)
+            elif layer != 0 and self.xyz_in_all:
+                x = torch.cat([x, xyz], 1)
+            x = lin(x)
+            # last layer Tanh
+            if layer == self.num_layers - 2 and self.use_tanh:
+                x = self.tanh(x)
+            if layer < self.num_layers - 2:
+                if (
+                    self.norm_layers is not None
+                    and layer in self.norm_layers
+                    and not self.weight_norm
+                ):
+                    bn = getattr(self, "bn" + str(layer))
+                    x = bn(x)
+                x = self.relu(x)
+                if self.dropout is not None and layer in self.dropout:
+                    x = F.dropout(x, p=self.dropout_prob, training=self.training)
+
+        if hasattr(self, "th"):
+            x = self.th(x)
+
+        # hand, object, class label
+        if self.use_classifier:
+            return x[:, 0].unsqueeze(1), x[:, 1].unsqueeze(1)
+        else:
+            return x[:, 0].unsqueeze(1), x[:, 1].unsqueeze(1)
 
 
 class IBSNet(nn.Module):
@@ -279,18 +365,13 @@ class IBSNet(nn.Module):
         self.num_samp_per_scene = num_samp_per_scene
 
     def forward(self, x_obj1, x_obj2, xyz):
-        # print("x_obj1.shape: ", x_obj1.shape)
-        # print("x_obj2.shape: ", x_obj2.shape)
-        # print("xyz.shape: ", xyz.shape)
-
         x_obj1 = self.encoder_obj1(x_obj1)
-        latent_obj1 = x_obj1.reshape(-1, 1, x_obj1.shape[1]).repeat(1, self.num_samp_per_scene, 1)
-
+        latent_obj1 = x_obj1.repeat_interleave(self.num_samp_per_scene, dim=0)
         x_obj2 = self.encoder_obj2(x_obj2)
-        latent_obj2 = x_obj2.reshape(-1, 1, x_obj2.shape[1]).repeat(1, self.num_samp_per_scene, 1)
+        latent_obj2 = x_obj2.repeat_interleave(self.num_samp_per_scene, dim=0)
 
-        latent = torch.cat([latent_obj1, latent_obj2], 2)
+        latent = torch.cat([latent_obj1, latent_obj2], 1)
 
-        decoder_inputs = torch.cat([latent, xyz], 2)
-        # print("decoder_inputs.type: ", decoder_inputs.dtype)
-        return self.decoder(decoder_inputs)
+        decoder_inputs = torch.cat([latent, xyz], 1)
+        udf_obj1, udf_obj2 = self.decoder(decoder_inputs)
+        return udf_obj1, udf_obj2

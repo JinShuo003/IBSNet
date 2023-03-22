@@ -1,10 +1,10 @@
 {
     "Description" : "Compute two SDF fields",
     "DataSource" : "/home/data/jinshuo/IBS_Net/data",
-    "TrainSplit" : "configs/train_split/train_scene7.json",
-    "TestSplit" : "configs/test_split/test_scene7.json",
+    "TrainSplit" : "configs/train_augmentation_split/train_augmentation_scene4.json",
+    "TestSplit" : "configs/test_augmentation_split/test_augmentation_scene4.json",
     "ParaSaveDir" : "trained_models",
-    "Device" : 0,
+    "Device" : 5,
     "NetworkSpecs" : {
         "dims" : [512, 512, 512, 512, 512, 512, 512, 512],
         "dropout" : [0, 1, 2, 3, 4, 5, 6, 7],
@@ -16,7 +16,7 @@
         "latent_dropout" : false,
         "weight_norm" : true
     },
-    "NumEpochs" : 500,
+    "NumEpochs" : 800,
     "CodeLength": 256,
     "LearningRateSchedule" : {
 	    "Type" : "Step",

@@ -16,7 +16,7 @@
         "latent_dropout" : false,
         "weight_norm" : true
     },
-    "NumEpochs" : 800,
+    "NumEpochs" : 500,
     "CodeLength": 256,
     "LearningRateSchedule" : {
 	    "Type" : "Step",

@@ -26,27 +26,19 @@ def visualize_data(pcd1, pcd2, udf_data, specs):
 
     udf_np = np.split(udf_np, pcd1_np.shape[0])
     for i in range(pcd1_np.shape[0]):
-        surface_points1 = [points[0:3] for points in udf_np[i] if abs(points[3]) < 0.02]
-        surface_points2 = [points[0:3] for points in udf_np[i] if abs(points[4]) < 0.01]
-        ibs_points = [points[0:3] for points in udf_np[i] if abs(points[3] - points[4]) < 0.002]
+        ibs_points = [points[0:3] for points in udf_np[i] if abs(points[3] - points[4]) < specs['IBSSurfaceThreshold']]
 
         pcd1_o3d = o3d.geometry.PointCloud()
         pcd2_o3d = o3d.geometry.PointCloud()
         ibs_o3d = o3d.geometry.PointCloud()
-        sdf1_o3d = o3d.geometry.PointCloud()
-        sdf2_o3d = o3d.geometry.PointCloud()
 
         pcd1_o3d.points = o3d.utility.Vector3dVector(pcd1_np[i])
         pcd2_o3d.points = o3d.utility.Vector3dVector(pcd2_np[i])
         ibs_o3d.points = o3d.utility.Vector3dVector(ibs_points)
-        sdf1_o3d.points = o3d.utility.Vector3dVector(surface_points1)
-        sdf2_o3d.points = o3d.utility.Vector3dVector(surface_points2)
 
         pcd1_o3d.paint_uniform_color([1, 0, 0])
         pcd2_o3d.paint_uniform_color([0, 1, 0])
         ibs_o3d.paint_uniform_color([0, 0, 1])
-        sdf1_o3d.paint_uniform_color([1, 0, 0])
-        sdf2_o3d.paint_uniform_color([0, 1, 0])
 
         o3d.visualization.draw_geometries([ibs_o3d, pcd1_o3d, pcd2_o3d])
 
@@ -119,7 +111,9 @@ def test(IBS_Net, sdf_test_loader, visualize, specs, model):
         print('test_avrg_loss: {}\n'.format(test_avrg_loss))
 
         # 写入测试结果
-        test_result_filename = os.path.join(test_result_dir, "{}+{}.txt".format(os.path.basename(test_split), os.path.basename(model)))
+        test_split_ = test_split.replace("/", "-").replace("\\", "-")
+        model_ = model.replace("/", "-").replace("\\", "-")
+        test_result_filename = os.path.join(test_result_dir, "{}+{}.txt".format(test_split_, model_))
         with open(test_result_filename, 'w') as f:
             f.write("test_split: {}\n".format(test_split))
             f.write("model: {}\n".format(model))

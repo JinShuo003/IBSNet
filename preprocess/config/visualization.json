@@ -1,11 +1,11 @@
 {
   "mesh_dir": "../data/mesh",
-  "pcd_dir": "../data/pcd/IBSNet_augmentation",
-  "sdf_dir": "../data/SdfSamples/IBSNet_augmentation",
+  "pcd_dir": "../data/pcd/IBSNet",
+  "sdf_dir": "../data/SdfSamples/IBSNet",
   "IOUgt_dir": "../data/boundingBox",
   "categories": ["scene1","scene2","scene3","scene4","scene5","scene6","scene7","scene8","scene9"],
   "filename_re": "scene\\d\\.\\d{4}",
-  "process_filename_re": "scene1",
+  "process_filename_re": "scene\\d.1001",
   "visualization_options": {
     "sdf_threshold": 0.01,
     "geometries": {
@@ -16,9 +16,9 @@
       "aabb1": false,
       "aabb2": false,
       "aabb": false,
-      "aabb_IOUgt": true,
-      "sdf1": true,
-      "sdf2": true,
+      "aabb_IOUgt": false,
+      "sdf1": false,
+      "sdf2": false,
       "ibs": true
     },
     "colors": {

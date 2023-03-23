@@ -9,7 +9,9 @@ from open3d.visualization import rendering
 import json
 import numpy as np
 import datetime
-from utils import *
+import matplotlib.pyplot as plt
+
+# from utils import *
 
 
 def parseConfig(config_filepath: str = './config/generatePointCloud.json'):
@@ -34,65 +36,27 @@ def get_pcd(specs, category, cur_filename):
     # 将点云进行归一化
     pcd1, pcd2, centroid, scale = normalize_point_cloud(pcd1, pcd2)
 
-    # 从mesh获取单角度点云
-    get_scan_pcd(specs, category, cur_filename, mesh1, mesh2, centroid, scale)
+    # 从点云获取单角度点云
+    get_scan_pcd(specs, category, cur_filename, pcd1, pcd2)
     return pcd1, pcd2, centroid, scale
 
 
-def get_scan_pcd(specs, category, cur_filename, mesh1, mesh2, centroid, scale):
+def get_scan_pcd(specs, category, cur_filename, pcd1, pcd2):
     scan_num = specs["scan_options"]["scan_num"]
-    mesh1_t = o3d.t.geometry.TriangleMesh.from_legacy(mesh1)
-    mesh2_t = o3d.t.geometry.TriangleMesh.from_legacy(mesh2)
-    scene = o3d.t.geometry.RaycastingScene()
-    mesh1_id = scene.add_triangles(mesh1_t)
-    mesh2_id = scene.add_triangles(mesh2_t)
-
-    # 将mesh归一化
-    mesh1.translate(-centroid)
-    mesh2.translate(-centroid)
-    mesh1.scale(1/scale, np.array([0, 0, 0]))
-    mesh2.scale(1/scale, np.array([0, 0, 0]))
-
     coordinate = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0])
-    # mesh1.compute_vertex_normals()
 
-    render = rendering.OffscreenRenderer(640, 480)
-    mat = rendering.MaterialRecord()
-    mat.shader = 'defaultLit'
+    for i in range(scan_num):
+        theta = 2*math.pi*i/scan_num
+        r = 3
+        camera_pos = np.array([r*math.cos(theta), 2, r*math.sin(theta)])
+        mesh1_scan = pcd1.hidden_point_removal(camera_pos, 1)[0]
+        mesh2_scan = pcd2.hidden_point_removal(camera_pos, 1)[0]
+        pcd1.paint_uniform_color((1, 0, 0))
+        pcd2.paint_uniform_color((1, 1, 0))
+        mesh1_scan.paint_uniform_color((0, 1, 0))
+        mesh2_scan.paint_uniform_color((0, 0, 1))
 
-    render.scene.add_geometry("sphere1", mesh1, mat)
-    render.scene.add_geometry("cylinder1", mesh2, mat)
-    render.setup_camera(45, [0, 0, 0], [0, 0, -25.0], [0, 1, 0])
-
-    cimg = render.render_to_image()
-    dimg = render.render_to_depth_image()
-
-    import matplotlib as plt
-    plt.subplot(1, 2, 1)
-    plt.imshow(cimg)
-    plt.subplot(1, 2, 2)
-    plt.imshow(dimg)
-    plt.show()
-
-    #
-    # # 光线
-    # for i in range(scan_num):
-    #     theta = 2*math.pi*i/scan_num
-    #     r = 3
-    #     eye = [r*math.cos(theta), 1.0, r*math.sin(theta)]
-    #     rays = scene.create_rays_pinhole(fov_deg=90,
-    #                                      center=[0, 0, 0],
-    #                                      eye=eye,
-    #                                      up=[0, 1, 0],
-    #                                      width_px=10000,
-    #                                      height_px=10000)
-    #     # paint_rays(rays, mesh1, mesh2, coordinate)
-    #     cast_result = scene.cast_rays(rays)
-    #     import copy
-    #     mesh1_crop = copy.deepcopy(mesh1)
-    #     mesh2_crop = copy.deepcopy(mesh2)
-    #     get_visible_mesh(mesh1_crop, mesh1_id, mesh2_crop, mesh2_id, cast_result)
-    #     o3d.visualization.draw_geometries([mesh1_crop, mesh2_crop, coordinate])
+        o3d.visualization.draw_geometries([pcd1, pcd2, mesh1_scan, mesh2_scan])
 
 
 def get_visible_mesh(mesh1, mesh1_id, mesh2, mesh2_id, cast_result):

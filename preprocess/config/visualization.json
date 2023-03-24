@@ -1,6 +1,6 @@
 {
-  "mesh_dir": "../data/mesh",
-  "pcd_dir": "../data/pcd/IBSNet",
+  "mesh_dir": "D:\\dataset\\IBSNet\\mesh",
+  "pcd_dir": "D:\\dataset\\IBSNet\\pcd\\IBSNet_IOUnormalize",
   "sdf_dir": "../data/SdfSamples/IBSNet",
   "IOUgt_dir": "../data/boundingBox",
   "categories": ["scene1","scene2","scene3","scene4","scene5","scene6","scene7","scene8","scene9"],

@@ -9,6 +9,7 @@ from open3d.visualization import rendering
 import json
 import numpy as np
 import datetime
+import matplotlib.pyplot as plt
 from utils import *
 
 
@@ -20,17 +21,18 @@ def parseConfig(config_filepath: str = './config/generatePointCloud.json'):
 
 # ----------------------------------------点云-------------------------------------------
 def get_pcd(specs, category, cur_filename):
-
     # 获取mesh
     mesh_dir = specs['mesh_path']
     mesh1 = o3d.io.read_triangle_mesh(os.path.join(mesh_dir, category, '{}_0.off'.format(cur_filename)))
     mesh2 = o3d.io.read_triangle_mesh(os.path.join(mesh_dir, category, '{}_1.off'.format(cur_filename)))
     # 采样得到完整点云
     pcd_sample_options = specs["PCD_sample_options"]
-    pcd1 = mesh1.sample_points_poisson_disk(number_of_points=pcd_sample_options["number_of_points"],
-                                            init_factor=10)
-    pcd2 = mesh2.sample_points_poisson_disk(number_of_points=pcd_sample_options["number_of_points"],
-                                            init_factor=10)
+    # pcd1 = mesh1.sample_points_poisson_disk(number_of_points=pcd_sample_options["number_of_points"],
+    #                                         init_factor=10)
+    # pcd2 = mesh2.sample_points_poisson_disk(number_of_points=pcd_sample_options["number_of_points"],
+    #                                         init_factor=10)
+    pcd1 = mesh1.sample_points_uniformly(number_of_points=pcd_sample_options["number_of_points"])
+    pcd2 = mesh2.sample_points_uniformly(number_of_points=pcd_sample_options["number_of_points"])
     # 将点云进行归一化
     pcd1, pcd2, centroid, scale = normalize_point_cloud(pcd1, pcd2)
 
@@ -50,49 +52,92 @@ def get_scan_pcd(specs, category, cur_filename, mesh1, mesh2, centroid, scale):
     # 将mesh归一化
     mesh1.translate(-centroid)
     mesh2.translate(-centroid)
-    mesh1.scale(1/scale, np.array([0, 0, 0]))
-    mesh2.scale(1/scale, np.array([0, 0, 0]))
+    mesh1.scale(1 / scale, np.array([0, 0, 0]))
+    mesh2.scale(1 / scale, np.array([0, 0, 0]))
 
     coordinate = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0])
-    # mesh1.compute_vertex_normals()
 
-    render = rendering.OffscreenRenderer(640, 480)
-    mat = rendering.MaterialRecord()
-    mat.shader = 'defaultLit'
+    # 光线
+    for i in range(scan_num):
+        theta = 2 * math.pi * i / scan_num
+        r = 2
+        eye = [r * math.cos(theta), 1.0, r * math.sin(theta)]
+        rays = scene.create_rays_pinhole(fov_deg=120,
+                                         center=[0, 0, 0],
+                                         eye=eye,
+                                         up=[0, 1, 0],
+                                         width_px=50,
+                                         height_px=50)
+        # paint_rays(rays, mesh1, mesh2, coordinate)
+        cast_result = scene.cast_rays(rays)
 
-    render.scene.add_geometry("sphere1", mesh1, mat)
-    render.scene.add_geometry("cylinder1", mesh2, mat)
-    render.setup_camera(45, [0, 0, 0], [0, 0, -25.0], [0, 1, 0])
+        pcd1_scan, pcd2_scan = get_cur_pcd(rays, cast_result, eye)
 
-    cimg = render.render_to_image()
-    dimg = render.render_to_depth_image()
+        mesh1.compute_vertex_normals()
+        mesh2.compute_vertex_normals()
+        o3d.visualization.draw_geometries([mesh1, mesh2, pcd1_scan, pcd2_scan, coordinate])
 
-    import matplotlib as plt
-    plt.subplot(1, 2, 1)
-    plt.imshow(cimg)
-    plt.subplot(1, 2, 2)
-    plt.imshow(dimg)
-    plt.show()
 
+def get_cur_pcd(rays, cast_result, eye):
+    geometry_ids = cast_result["geometry_ids"]
+    hit = cast_result['t_hit']
+    rays_dis1 = []
+    rays_dis2 = []
+    rays_direction1 = []
+    rays_direction2 = []
+    for i in range(rays.shape[0]):
+        for j in range(rays.shape[1]):
+            if not math.isinf(hit[i][j]):
+                if geometry_ids[i][j] == 0:
+                    rays_direction1.append(rays[i][j])
+                    rays_dis1.append(hit[i][j])
+                if geometry_ids[i][j] == 1:
+                    rays_direction2.append(rays[i][j])
+                    rays_dis2.append(hit[i][j])
+
+    points1 = [eye + rays_direction1[i]*rays_dis1[i] for i in range(rays_direction1.shape[0])]
+    points2 = [eye + rays_direction2[i]*rays_dis2[i] for i in range(rays_direction2.shape[0])]
+    # hit = cast_result["t_hit"].numpy().reshape(-1)
+    # for i in range(rays.shape[0]):
+    #     # if hit[i] != 'inf':
+    #     if geometry_ids[i] == mesh1_id:
+    #         points1.append(eye + rays[i][3:6] * hit[i])
+    #     if geometry_ids[i] == mesh2_id:
+    #         points2.append(get_triangle_centroid(vertices_mesh2, triangles_mesh2[primitive_ids[i]]))
+
+    # # 取出投射结果中的集合体id和面片id
+    # geometry_ids = cast_result["geometry_ids"].numpy().reshape(-1)
+    # primitive_ids = cast_result["primitive_ids"].numpy().reshape(-1)
+    # # 从原始mesh中取出顶点坐标和面片
+    # triangles_mesh1 = np.asarray(mesh1.triangles)
+    # triangles_mesh2 = np.asarray(mesh2.triangles)
+    # vertices_mesh1 = np.asarray(mesh1.vertices)
+    # vertices_mesh2 = np.asarray(mesh2.vertices)
+    # points1 = []
+    # points2 = []
+    # for i in range(geometry_ids.shape[0]):
+    #     if geometry_ids[i] == mesh1_id:
+    #         points1.append(get_triangle_centroid(vertices_mesh1, triangles_mesh1[primitive_ids[i]]))
+    #     if geometry_ids[i] == mesh2_id:
+    #         points2.append(get_triangle_centroid(vertices_mesh2, triangles_mesh2[primitive_ids[i]]))
     #
-    # # 光线
-    # for i in range(scan_num):
-    #     theta = 2*math.pi*i/scan_num
-    #     r = 3
-    #     eye = [r*math.cos(theta), 1.0, r*math.sin(theta)]
-    #     rays = scene.create_rays_pinhole(fov_deg=90,
-    #                                      center=[0, 0, 0],
-    #                                      eye=eye,
-    #                                      up=[0, 1, 0],
-    #                                      width_px=10000,
-    #                                      height_px=10000)
-    #     # paint_rays(rays, mesh1, mesh2, coordinate)
-    #     cast_result = scene.cast_rays(rays)
-    #     import copy
-    #     mesh1_crop = copy.deepcopy(mesh1)
-    #     mesh2_crop = copy.deepcopy(mesh2)
-    #     get_visible_mesh(mesh1_crop, mesh1_id, mesh2_crop, mesh2_id, cast_result)
-    #     o3d.visualization.draw_geometries([mesh1_crop, mesh2_crop, coordinate])
+    pcd1_scan = o3d.geometry.PointCloud()
+    pcd2_scan = o3d.geometry.PointCloud()
+    pcd1_scan.points = o3d.utility.Vector3dVector(np.array(points1))
+    pcd2_scan.points = o3d.utility.Vector3dVector(np.array(points2))
+    pcd1_scan.paint_uniform_color((1, 0, 0))
+    pcd2_scan.paint_uniform_color((0, 1, 0))
+
+    return pcd1_scan, pcd2_scan
+
+
+def get_triangle_centroid(vertices, triangle):
+    point1 = vertices[triangle[0]]
+    point2 = vertices[triangle[1]]
+    point3 = vertices[triangle[2]]
+
+    triangle_centroid = np.mean(np.array([point1, point2, point3]), axis=0)
+    return triangle_centroid
 
 
 def get_visible_mesh(mesh1, mesh1_id, mesh2, mesh2_id, cast_result):
@@ -109,29 +154,30 @@ def get_visible_mesh(mesh1, mesh1_id, mesh2, mesh2_id, cast_result):
             triangles_visible_mesh2.append(triangles_mesh2[primitive_ids[i]])
     mesh1.triangles = o3d.utility.Vector3iVector(np.array(triangles_visible_mesh1))
     mesh2.triangles = o3d.utility.Vector3iVector(np.array(triangles_visible_mesh2))
-
+    mesh1.remove_duplicated_triangles()
+    mesh2.remove_duplicated_triangles()
+    mesh1.remove_duplicated_vertices()
+    mesh2.remove_duplicated_vertices()
+    mesh1.remove_degenerate_triangles()
+    mesh2.remove_degenerate_triangles()
     pass
-    # triangles = np.asarray(mesh1.triangles)
-    # for i in range(cast_result["geometry_ids"].shape[0]):
-    #     for j in range(cast_result["geometry_ids"].shape[1]):
-    #         if cast_result["geometry_ids"][i][j] == mesh1_id:
 
 
-def paint_rays(rays, mesh1, mesh2, coordinate, sphere):
+def paint_rays(rays, mesh1, mesh2, coordinate):
     rays = rays.numpy()
     eye = rays[0][0][0:3].reshape(1, 3)
-    rays = rays[:, :, 3:6]*2
+    rays = rays[:, :, 3:6]
     rays_points = eye
     for i in range(rays.shape[0]):
         rays_points = np.concatenate((rays_points, rays[i]))
-    lines = [[0, i] for i in range(1, rays_points.shape[0]-1)]
+    lines = [[0, i] for i in range(1, rays_points.shape[0] - 1)]
     colors = [[1, 0, 0] for i in range(lines.__sizeof__())]
     lines_pcd = o3d.geometry.LineSet()
     lines_pcd.lines = o3d.utility.Vector2iVector(lines)
     lines_pcd.colors = o3d.utility.Vector3dVector(colors)  # 线条颜色
     lines_pcd.points = o3d.utility.Vector3dVector(rays_points)
 
-    o3d.visualization.draw_geometries([mesh1, mesh2, coordinate, lines_pcd, sphere])
+    o3d.visualization.draw_geometries([mesh1, mesh2, coordinate, lines_pcd])
 
 
 def normalize_point_cloud(pcd1, pcd2):
@@ -355,19 +401,19 @@ def handle_scene(specs, category, cur_filename):
     time1 = datetime.datetime.now()
     pcd1, pcd2, centroid, scale = get_pcd(specs, category, cur_filename)
     time2 = datetime.datetime.now()
-    print('get_pcd: ', (time2-time1).seconds)
+    print('get_pcd: ', (time2 - time1).seconds)
 
     # 在归一化坐标内进行采样，计算采样点的SDF值
     # 所有单角度点云与完整点云共用sdf sample点
     time1 = datetime.datetime.now()
     sdf_samples = get_sdf_samples(specs, category, cur_filename, centroid, scale)
     time2 = datetime.datetime.now()
-    print('get_sdf_samples: ', (time2-time1).seconds)
+    print('get_sdf_samples: ', (time2 - time1).seconds)
 
     time1 = datetime.datetime.now()
     SDF_data = get_sdf_value(pcd1, pcd2, sdf_samples)
     time2 = datetime.datetime.now()
-    print('get_sdf_value: ', (time2-time1).seconds)
+    print('get_sdf_value: ', (time2 - time1).seconds)
 
     # 可视化
     if specs['visualization']:

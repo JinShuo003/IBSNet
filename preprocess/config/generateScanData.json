@@ -1,5 +1,5 @@
 {
-  "mesh_path": "..\\data\\mesh",
+  "mesh_path": "../data/mesh",
   "pcd_path": "..\\data\\pcd\\IBSNet_scan",
   "IOUgt_path": "..\\data\\boundingBox",
   "sdf_path": "..\\data\\SdfSamples\\IBSNet_scan",

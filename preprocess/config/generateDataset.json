@@ -1,11 +1,11 @@
 {
-  "filename_re": "scene\\d\\.\\d{4}_rotate\\d*",
-  "sdf_sample_path": "../data/SdfSamples/IBSNet_augmentation",
+  "filename_re": "scene\\d\\.\\d{4}_rotate\\d",
+  "sdf_sample_path": "D:\\dataset\\IBSNet\\SdfSamples\\IBSNet_IOUnormalize_augmentation",
   "dataset_path": "../configs",
   "categories": ["scene1","scene2","scene3","scene4","scene5","scene6","scene7","scene8","scene9"],
-  "dataset_name": "IBSNet_augmentation",
-  "train_split_dirname": "train_augmentation_split",
-  "test_split_dirname": "test_augmentation_split",
+  "dataset_name": "IBSNet_IOUnormalize_augmentation",
+  "train_split_dirname": "train_IOUnormalize_augmentation_split",
+  "test_split_dirname": "test_IOUnormalize_augmentation_split",
 
   "partition_option": {
     "train_dataset_proportion": 0.7,

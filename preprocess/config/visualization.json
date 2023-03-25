@@ -1,11 +1,11 @@
 {
   "mesh_dir": "D:\\dataset\\IBSNet\\mesh",
   "pcd_dir": "D:\\dataset\\IBSNet\\pcd\\IBSNet_IOUnormalize",
-  "sdf_dir": "../data/SdfSamples/IBSNet",
-  "IOUgt_dir": "../data/boundingBox",
+  "sdf_dir": "D:\\dataset\\IBSNet\\SdfSamples\\IBSNet_IOUnormalize",
+  "IOUgt_dir": "D:\\dataset\\IBSNet\\boundingBox",
   "categories": ["scene1","scene2","scene3","scene4","scene5","scene6","scene7","scene8","scene9"],
   "filename_re": "scene\\d\\.\\d{4}",
-  "process_filename_re": "scene\\d.1001",
+  "process_filename_re": "scene3",
   "visualization_options": {
     "sdf_threshold": 0.01,
     "geometries": {
@@ -19,7 +19,8 @@
       "aabb_IOUgt": false,
       "sdf1": false,
       "sdf2": false,
-      "ibs": true
+      "ibs": true,
+      "ibs_mesh": true
     },
     "colors": {
       "mesh1": [0.7, 0.3, 0.3],

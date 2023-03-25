@@ -1,10 +1,10 @@
 {
     "Description" : "Compute two SDF fields",
     "DataSource" : "/home/data/jinshuo/IBS_Net/data",
-    "TrainSplit" : "configs/train_IOUnormalize_split/train.json",
-    "TestSplit" : "configs/test_IOUnormalize_split/test.json",
+    "TrainSplit" : "configs/train_IOUnormalize_augmentation_split/train.json",
+    "TestSplit" : "configs/test_IOUnormalize_augmentation_split/test.json",
     "ParaSaveDir" : "trained_models",
-    "Device" : 3,
+    "Device" : 1,
     "NetworkSpecs" : {
         "dims" : [512, 512, 512, 512, 512, 512, 512, 512],
         "dropout" : [0, 1, 2, 3, 4, 5, 6, 7],

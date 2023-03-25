@@ -1,11 +1,11 @@
 {
     "Description" : "Compute two SDF fields",
-    "DataSource" : "data",
-    "TestSplit" : "configs/test_split/test_scene3.json",
+    "DataSource" : "D:\\dataset\\IBSNet",
+    "TestSplit" : "configs/test_IOUnormalize_split/test_scene9.json",
     "TestResult" : "test_result",
     "Device" : 0,
     "SamplesPerScene" : 30000,
     "ScenesPerBatch" : 4,
     "DataLoaderThreads" : 4,
-    "IBSSurfaceThreshold": 0.002
+    "IBSSurfaceThreshold": 0.005
 }

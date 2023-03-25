@@ -176,13 +176,13 @@ if __name__ == '__main__':
     # 获取配置参数
     configFile_path = 'config/dataAugmentation.json'
     specs = parseConfig(configFile_path)
-    filename_re = specs['mesh_filename_re']
+    filename_re = specs['filename_re']
 
     categories = specs["categories"]
     handled_data = set()  # 成对处理，记录当前处理过的文件名
     for category in categories:
-        category_dir = os.path.join(specs["mesh_path"], category)
-        filename_list = os.listdir(os.path.join(specs["mesh_path"], category))
+        category_dir = os.path.join(specs["sdf_src_path"], category)
+        filename_list = os.listdir(category_dir)
         for filename in filename_list:
             #  跳过非文件
             file_absPath = os.path.join(category_dir, filename)

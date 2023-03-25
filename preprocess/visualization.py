@@ -111,6 +111,25 @@ def getTwoMeshBorder(mesh1, mesh2):
     return aabb1, aabb2, aabb_total
 
 
+def get_ibs_mesh(specs, ibs):
+    radius = 0.05  # 搜索半径
+    max_nn = 30  # 邻域内用于估算法线的最大点数
+    ibs.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius, max_nn))  # 法线估计
+
+    with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Debug) as cm:
+        ibs_mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(ibs, depth=12)
+    # print(mesh)
+    # ibs.estimate_normals()
+    # ibs_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(ibs, depth=8)
+    # estimate radius for rolling ball
+    # distances = ibs.compute_nearest_neighbor_distance()
+    # avg_dist = np.mean(distances)
+    # radius = 1.5 * avg_dist
+    #
+    # ibs_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(ibs, o3d.utility.DoubleVector([radius, radius * 2]))
+        return ibs_mesh
+
+
 def visualize(specs, category, filename_intersection):
     container = dict()
     geometries = []
@@ -122,7 +141,7 @@ def visualize(specs, category, filename_intersection):
     aabb1, aabb2, aabb = getTwoMeshBorder(mesh1, mesh2)
     IOUgt = get_IOUgt(specs, geometries_path['IOUgt'])
     sdf1, sdf2, ibs = get_surface_points(specs, geometries_path['sdf'])
-
+    ibs_mesh = get_ibs_mesh(specs, ibs)
     container['mesh1'] = mesh1
     container['mesh2'] = mesh2
     container['pcd1'] = pcd1
@@ -134,6 +153,7 @@ def visualize(specs, category, filename_intersection):
     container['sdf1'] = sdf1
     container['sdf2'] = sdf2
     container['ibs'] = ibs
+    container['ibs_mesh'] = ibs_mesh
 
     for key in specs['visualization_options']['geometries']:
         if specs['visualization_options']['geometries'][key]:

@@ -1,2 +1,2 @@
-from utils.random import *
+from utils.randomNum import *
 from utils.learning_rate import *

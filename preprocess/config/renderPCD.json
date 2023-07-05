@@ -1,0 +1,22 @@
+{
+  "pcd_dir": "D:\\dataset\\IBSNet\\pcd\\IBSNet_scan_256",
+  "sdf_dir": "D:\\dataset\\IBSNet\\SdfSamples\\IBSNet_scan_256",
+  "img_save_dir": "D:\\dataset\\IBSNet\\img\\IBSNet_scan_256",
+  "category_re": "scene\\d",
+  "scene_re": "scene\\d.\\d{4}",
+  "filename_re": "scene\\d.\\d{4}_view0",
+
+  "visualization_options": {
+    "sdf_threshold": 0.003,
+    "geometries": {
+      "pcd1": true,
+      "pcd2": true,
+      "ibs_scan": true
+    },
+    "colors": {
+      "pcd1": [0, 1, 0],
+      "pcd2": [1, 0, 0],
+      "ibs": [0, 0, 1]
+    }
+  }
+}

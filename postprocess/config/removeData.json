@@ -1,0 +1,9 @@
+{
+  "pcd_partial_save_dir": "D:\\dataset\\IBSNet\\pcd\\IBSNet_scan_256",
+  "sdf_indirect_complete_save_dir": "D:\\dataset\\IBSNet\\SdfSamples\\IBSNet_scan_256",
+  "sdf_indirect_partial_save_dir": "D:\\dataset\\IBSNet\\scanSdf\\IBSNet_scan_256",
+  "sdf_direct_save_dir": "D:\\dataset\\IBSNet\\SdfSamplesDirect\\IBSNet_scan_256",
+
+  "category_re": "scene7",
+  "scene_re": "scene7.1007"
+}

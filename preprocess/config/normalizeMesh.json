@@ -1,0 +1,10 @@
+{
+  "mesh_dir": "D:\\dataset\\IBSNet\\mesh",
+  "IOUgt_dir": "D:\\dataset\\IBSNet\\boundingBox",
+  "mesh_normalize_save_dir": "D:\\dataset\\IBSNet\\mesh_normalize",
+  "IOUgt_dir_normalize_save_dir": "D:\\dataset\\IBSNet\\boundingBox_normalize",
+
+  "category_re": "scene\\d",
+  "scene_re": "scene\\d.\\d{4}",
+  "filename_re": "scene\\d.\\d{4}_view\\d*"
+}

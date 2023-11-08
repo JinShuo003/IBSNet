@@ -1,4 +1,5 @@
 import os.path
+import re
 
 import numpy as np
 import torch
@@ -18,7 +19,6 @@ def get_spec_with_default(specs, key, default):
 
 
 def visualize_data(pcd1, pcd2, udf_data, specs):
-
     # 将udf数据拆分开，并且转移到cpu
     udf_np = udf_data.cpu().detach().numpy()
     pcd1_np = pcd1.cpu().detach().numpy()
@@ -41,6 +41,26 @@ def visualize_data(pcd1, pcd2, udf_data, specs):
         ibs_o3d.paint_uniform_color([0, 0, 1])
 
         o3d.visualization.draw_geometries([ibs_o3d, pcd1_o3d, pcd2_o3d])
+
+
+def save_result(sdf_test_loader, indices, specs, udf_data):
+    scenes_per_batch = specs["ScenesPerBatch"]
+    save_dir = specs["SaveDir"]
+
+    # 将udf数据拆分开，并且转移到cpu
+    udf_np = udf_data.cpu().detach().numpy()
+    udf_np = np.split(udf_np, scenes_per_batch)
+
+    filename_list = [sdf_test_loader.dataset.npyfiles[index] for index in indices]
+    for index, filename in enumerate(filename_list):
+        filename_info = os.path.split(filename)
+        filename_ = filename_info[-1]
+        category = filename_info[-2]
+        save_path = os.path.join(save_dir, category)
+
+        if not os.path.isdir(save_path):
+            os.makedirs(save_path)
+        np.savez(os.path.join(save_path, filename_), data=udf_np[index])
 
 
 def get_dataloader(specs):
@@ -68,12 +88,14 @@ def get_dataloader(specs):
     return sdf_test_loader
 
 
-def test(IBS_Net, sdf_test_loader, visualize, specs, model):
+def test(IBS_Net, sdf_test_loader, specs, model):
     scene_per_batch = specs["ScenesPerBatch"]
     num_samp_per_scene = specs["SamplesPerScene"]
     test_result_dir = specs["TestResult"]
     test_split = specs["TestSplit"]
     device = specs["Device"]
+    visualize = specs["Visualize"]
+    save = specs["Save"]
 
     loss_udf1 = torch.nn.L1Loss(reduction="sum")
     loss_udf2 = torch.nn.L1Loss(reduction="sum")
@@ -103,7 +125,8 @@ def test(IBS_Net, sdf_test_loader, visualize, specs, model):
             test_total_loss += batch_loss.item()
 
             udf_data = torch.cat([xyz, udf_pred1, udf_pred2], 1)
-
+            if save:
+                save_result(sdf_test_loader, indices, specs, udf_data)
             if visualize:
                 visualize_data(pcd1, pcd2, udf_data, specs)
 
@@ -120,14 +143,15 @@ def test(IBS_Net, sdf_test_loader, visualize, specs, model):
             f.write("avrg_loss: {}\n".format(test_avrg_loss))
 
 
-def main_function(experiment_config_file, model, visualize):
+def main_function(experiment_config_file, model):
     specs = ws.load_experiment_specifications(experiment_config_file)
+    device = specs["Device"]
 
     sdf_loader = get_dataloader(specs)
     # 读取模型
-    IBS_Net = torch.load(model, map_location='cuda:0')
+    IBS_Net = torch.load(model, map_location="cuda:{}".format(device))
     # 测试并返回loss
-    test(IBS_Net, sdf_loader, visualize, specs, model)
+    test(IBS_Net, sdf_loader, specs, model)
 
 
 if __name__ == '__main__':
@@ -148,14 +172,6 @@ if __name__ == '__main__':
         required=True,
         help="Whether visualization is needed."
     )
-    arg_parser.add_argument(
-        "--visualize",
-        "-v",
-        dest="visualize",
-        type=bool,
-        default=False,
-        help="Whether visualization is needed."
-    )
     args = arg_parser.parse_args()
 
-    main_function(args.experiment_config_file, args.model, args.visualize)
+    main_function(args.experiment_config_file, args.model)

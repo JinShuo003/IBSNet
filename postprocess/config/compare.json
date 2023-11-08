@@ -1,0 +1,32 @@
+{
+  "mesh_dir": "D:\\dataset\\IBSNet\\mesh",
+  "pcd_dir": "D:\\dataset\\IBSNet\\pcd\\IBSNet_scan_512",
+  "sdf_scan_dir": "D:\\dataset\\IBSNet\\scanSdf\\IBSNet_scan_256",
+  "sdf_gt_dir": "D:\\dataset\\IBSNet\\SdfSamples\\IBSNet_scan_512",
+  "sdf_indirect_dir": "D:\\dataset\\IBSNet\\test_result\\5.9\\indirect\\IBSNet_scan_256",
+  "sdf_direct_dir": "D:\\dataset\\IBSNet\\test_result\\5.9\\direct\\IBSNet_scan_256",
+  "IOUgt_dir": "D:\\dataset\\IBSNet\\boundingBox",
+
+  "category_re": "scene2",
+  "scene_re": "scene\\d.\\d{4}",
+  "filename_re": "scene\\d.\\d{4}_view\\d*",
+
+  "cal_CD": true,
+  "visualize": true,
+
+  "visualization_options": {
+    "sdf_threshold": 0.001,
+    "geometries": {
+      "pcd1": true,
+      "pcd2": true,
+      "ibs_scan": true,
+      "ibs_network": true,
+      "ibs_gt": true
+    },
+    "colors": {
+      "pcd1": [0, 1, 0],
+      "pcd2": [1, 0.0, 0.0],
+      "ibs": [0, 0, 1]
+    }
+  }
+}

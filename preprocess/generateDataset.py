@@ -4,6 +4,8 @@
 import json
 import os
 import re
+
+from numpy import sort
 from ordered_set import OrderedSet
 import torch
 from torch.utils.data import DataLoader, Dataset
@@ -15,86 +17,92 @@ def parse_config(config_filepath: str = './config/generateSDF.json'):
         return config
 
 
-def get_instance_filenames(specs):
-    """
-    将sdf采样点路径下每一个类别文件夹中的文件名按类别存入instance_filename_list
-    """
+def serialize_data(specs):
     sdf_sample_path = specs["sdf_sample_path"]
+    scenename_re = specs["scenename_re"]
     filename_re = specs["filename_re"]
     categories = specs["categories"]
-    # 获取每一个实例的文件名
-    instance_filename_list = list()
+    data = {}
+    scenename_list = []
     for category in categories:
-        cur_list = list()
+        data[category] = {}
         filename_list = os.listdir(os.path.join(sdf_sample_path, category))
         for filename in filename_list:
-            instance_filename = re.match(filename_re, filename).group()
-            cur_list.append(instance_filename)
-        instance_filename_list.append(cur_list)
-    return instance_filename_list
+            scenename = re.match(scenename_re, filename).group()
+            if not scenename in data[category].keys():
+                data[category][scenename] = []
+            data[category][scenename].append(re.match(filename_re, filename).group())
+
+    for category in data.keys():
+        scenename_cur_list = []
+        for scene in data[category].keys():
+            scenename_cur_list.append(scene)
+        scenename_list.append(scenename_cur_list)
+    return data, scenename_list
 
 
-def partition_dataset(instance_filename_list, specs):
-    """
-    依次将每一种类别下的所有文件按配置文件中的比例划分为训练集、测试集、验证集
-    :param instance_filenames: 实例名列表
-    :param category_set: 类别集合
-    :param specs: 配置信息
-    :return: 三个SubSet的列表，每个SubSet对应一个类目，记录了原始数据和下标
-    """
-    train_dataset = []
-    test_dataset = []
-    # 每个类别分别划分，保证比例均匀
-    for i in range(instance_filename_list.__len__()):
+def partition_dataset(data, scenename_list, specs):
+    """按比例划分每个类别下的场景，然后将对应场景的所有数据划分到训练集或测试集"""
+    category_re = specs["category_re"]
+    train_scene_split = []
+    test_scene_split = []
+
+    # 获取场景划分结果
+    for i in range(len(scenename_list)):
         # 计算训练集、测试集、验证集大小
-        train_size = int(len(instance_filename_list[i]) * specs["partition_option"]["train_dataset_proportion"])
-        test_size = len(instance_filename_list[i]) - train_size
+        train_size = int(len(scenename_list[i]) * specs["partition_option"]["train_dataset_proportion"])
+        test_size = len(scenename_list[i]) - train_size
         print("train: {}\ntest: {}\n".format(train_size, test_size))
 
-        _train_dataset, _test_dataset = torch.utils.data.random_split(instance_filename_list[i], [train_size, test_size])
+        train_scene, test_scene = torch.utils.data.random_split(scenename_list[i], [train_size, test_size])
+        train_scene = [train_scene.dataset[i] for i in train_scene.indices]
+        test_scene = [test_scene.dataset[i] for i in test_scene.indices]
+        train_scene_split.append(train_scene)
+        test_scene_split.append(test_scene)
 
-        train_dataset.append(_train_dataset)
-        test_dataset.append(_test_dataset)
-
+    # 根据场景划分结果将对应数据全部放入训练集或测试集
+    train_dataset = {}
+    test_dataset = {}
+    for i in range(len(train_scene_split)):
+        category = re.match(category_re, train_scene_split[i][0]).group()
+        train_dataset[category] = []
+        for scene in train_scene_split[i]:
+            train_dataset[category] += data[category][scene]
+    for i in range(len(test_scene_split)):
+        category = re.match(category_re, test_scene_split[i][0]).group()
+        test_dataset[category] = []
+        for scene in test_scene_split[i]:
+            test_dataset[category] += data[category][scene]
     return train_dataset, test_dataset
 
 
-def generate_split_file(dataset_path, dir_name, filename, dataset, category_set, specs):
-    """
-    根据数据集划分结果生成对应的文件存储划分信息
-    """
+def generate_split_file(dataset_path, dir_name, filename, dataset, specs):
+    """根据数据集划分结果生成对应的文件存储划分信息"""
     dataset_name = specs["dataset_name"]
-    # 若目录不存在则创建目录
+    # 创建目录
     if not os.path.isdir(os.path.join(dataset_path, dir_name)):
         os.mkdir(os.path.join(dataset_path, dir_name))
+
     # 生成数据
-    split_data = {dataset_name: {}}
-    for category in category_set:
-        split_data[dataset_name][category] = []
-    for i in range(dataset.__len__()):
-        for index in dataset[i].indices:
-            split_data[dataset_name]["scene{}".format(i+1)].append(dataset[i].dataset[index])
+    split_data = {dataset_name: dataset}
     split_json = json.dumps(split_data, indent=1)
 
     # 生成文件
     split_path = os.path.join(dataset_path, dir_name, "{}.json".format(filename))
     if os.path.isfile(split_path):
         os.remove(split_path)
-
-    # 写入总体的split文件
     with open(split_path, 'w', newline='\n') as f:
         f.write(split_json)
 
     # 写入每个场景的split文件
     for key in split_data[dataset_name]:
         scene_data = {dataset_name: {}}
-        scene_data[dataset_name][key] = split_data[dataset_name][key]
+        scene_data[dataset_name][key] = dataset[key]
         scene_json = json.dumps(scene_data, indent=1)
         # 生成文件
         scene_path = os.path.join(dataset_path, dir_name, "{}_{}.json".format(filename, key))
         if os.path.isfile(scene_path):
             os.remove(scene_path)
-        # 写入总体的split文件
         with open(scene_path, 'w', newline='\n') as f:
             f.write(scene_json)
 
@@ -113,10 +121,10 @@ if __name__ == '__main__':
     if not os.path.isdir(specs["dataset_path"]):
         os.mkdir(specs["dataset_path"])
 
-    # 获取所有实例名
-    instance_filename_list = get_instance_filenames(specs)
-    # 划分训练集、测试集
-    train_dataset, test_dataset = partition_dataset(instance_filename_list, specs)
+    # 将所有数据序列化为字典，格式为{"scene*": {scene*.****: {scene*.****_view*}}}
+    data, scenename_list = serialize_data(specs)
+    # 按场景名划分训练集、测试集
+    train_dataset, test_dataset = partition_dataset(data, scenename_list, specs)
     # 将划分结果写成文件
-    generate_split_file(dataset_path, train_split_dirname, "train", train_dataset, categories, specs)
-    generate_split_file(dataset_path, test_split_dirname, "test", test_dataset, categories, specs)
+    generate_split_file(dataset_path, train_split_dirname, "train", train_dataset, specs)
+    generate_split_file(dataset_path, test_split_dirname, "test", test_dataset, specs)

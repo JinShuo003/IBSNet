@@ -1,4 +1,3 @@
-data/
 .idea/
 *.bak
 */__pycache__
@@ -6,5 +5,4 @@ data/
 */sftp.json
 /tensorboard_logs
 *.pth
-events*
 /test_result

@@ -7,74 +7,31 @@ import re
 import json
 import numpy as np
 import copy
-from utils.path_utils import getFilenameTree
-
-
-def parseConfig(config_filepath: str = './config/visualization.json'):
-    with open(config_filepath, 'r') as configfile:
-        specs = json.load(configfile)
-
-    return specs
-
-
-# def getFilenameTree(specs: dict, base_path):
-#     # 以SDF GT作为基准构建文件树
-#     category_re = specs["category_re"]
-#     scene_re = specs["scene_re"]
-#     filename_re = specs["filename_re"]
-#
-#     filename_tree = dict()
-#     folder_info = os.walk(base_path)
-#     for dir_path, dir_names, filenames in folder_info:
-#         # 当前是顶级目录，不做处理
-#         if dir_path == base_path:
-#             continue
-#         # 获取当前文件夹的类目信息，合法则继续处理
-#         category = dir_path.split('\\')[-1]
-#         if not re.match(category_re, category):
-#             continue
-#         # 当前类目不在filename_tree中，添加
-#         if not category in filename_tree:
-#             filename_tree[category] = dict()
-#         for filename in filenames:
-#             if not re.match(filename_re, filename):
-#                 continue
-#             # 获取场景名
-#             scene = re.match(scene_re, filename)
-#             # 如果与场景re不匹配则跳过
-#             if not scene:
-#                 continue
-#             scene = scene.group()
-#             # 当前场景不在filename_tree[category]中，添加
-#             if not scene in filename_tree[category]:
-#                 filename_tree[category][scene] = list()
-#             filename_tree[category][scene].append(filename)
-#
-#     return filename_tree
+from utils import path_utils
 
 
 def getGeometryPath(specs, filename):
-    scene_re = specs["scene_re"]
-    category_re = specs["category_re"]
-    filename_re = specs["filename_re"]
+    scene_re = specs.get("path_options").get("format_info").get("scene_re")
+    category_re = specs.get("path_options").get("format_info").get("category_re")
+    filename_re = specs.get("path_options").get("format_info").get("filename_re")
     category = re.match(category_re, filename).group()
     scene = re.match(scene_re, filename).group()
     filename = re.match(filename_re, filename).group()
 
     geometry_path = dict()
 
-    mesh_dir = specs['mesh_dir']
-    ibs_mesh_gt_dir = specs['ibs_mesh_gt_dir']
-    ibs_mesh_pred_dir = specs['ibs_mesh_pred_dir']
-    ibs_pcd_gt_dir = specs['ibs_pcd_gt_dir']
-    ibs_pcd_pred_dir = specs['ibs_pcd_pred_dir']
-    pcd_dir = specs['pcd_dir']
-    sdf_complete_pred_dir = specs['sdf_complete_pred_dir']
-    sdf_complete_gt_dir = specs['sdf_complete_gt_dir']
-    sdf_direct_pred_dir = specs['sdf_direct_pred_dir']
-    sdf_direct_gt_dir = specs['sdf_direct_gt_dir']
-    sdf_partial_dir = specs['sdf_partial_dir']
-    IOU_dir = specs['IOUgt_dir']
+    mesh_dir = specs.get("path_options").get("geometries_dir").get('mesh_dir')
+    ibs_mesh_gt_dir = specs.get("path_options").get("geometries_dir").get('ibs_mesh_gt_dir')
+    ibs_mesh_pred_dir = specs.get("path_options").get("geometries_dir").get('ibs_mesh_pred_dir')
+    ibs_pcd_gt_dir = specs.get("path_options").get("geometries_dir").get('ibs_pcd_gt_dir')
+    ibs_pcd_pred_dir = specs.get("path_options").get("geometries_dir").get('ibs_pcd_pred_dir')
+    pcd_dir = specs.get("path_options").get("geometries_dir").get('pcd_dir')
+    sdf_complete_pred_dir = specs.get("path_options").get("geometries_dir").get('sdf_complete_pred_dir')
+    sdf_complete_gt_dir = specs.get("path_options").get("geometries_dir").get('sdf_complete_gt_dir')
+    sdf_direct_pred_dir = specs.get("path_options").get("geometries_dir").get('sdf_direct_pred_dir')
+    sdf_direct_gt_dir = specs.get("path_options").get("geometries_dir").get('sdf_direct_gt_dir')
+    sdf_partial_dir = specs.get("path_options").get("geometries_dir").get('sdf_partial_dir')
+    IOUgt_dir = specs.get("path_options").get("geometries_dir").get('IOUgt_dir')
 
     mesh1_filename = '{}_{}.obj'.format(scene, 0)
     mesh2_filename = '{}_{}.obj'.format(scene, 1)
@@ -100,7 +57,7 @@ def getGeometryPath(specs, filename):
     geometry_path['ibs_direct_pred'] = os.path.join(sdf_direct_pred_dir, category, sdf_filename)
     geometry_path['ibs_direct_gt'] = os.path.join(sdf_direct_gt_dir, category, sdf_filename)
     geometry_path['ibs_partial'] = os.path.join(sdf_partial_dir, category, sdf_filename)
-    geometry_path['IOU'] = os.path.join(IOU_dir, category, IOU_filename)
+    geometry_path['IOU'] = os.path.join(IOUgt_dir, category, IOU_filename)
 
     return geometry_path
 
@@ -345,17 +302,18 @@ def visualize(specs, filename):
 
 if __name__ == '__main__':
     # 获取配置参数
-    config_filepath = 'config/visualization.json'
-    specs = parseConfig(config_filepath)
-
-    filename_tree = getFilenameTree(specs, specs["ibs_pcd_pred_dir"])
+    config_filepath = 'configs/visualization.json'
+    specs = path_utils.read_config(config_filepath)
+    filename_tree_dir = specs.get("path_options").get("filename_tree_dir")
+    filename_tree = path_utils.get_filename_tree(specs,
+                                                 specs.get("path_options").get("geometries_dir").get(filename_tree_dir))
 
     for category in filename_tree:
         for scene in filename_tree[category]:
-            print('current scene: ', scene)
+            print('current scene1: ', scene)
             for filename in filename_tree[category][scene]:
                 print('current file: ', filename)
                 try:
                     visualize(specs, filename)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(e)

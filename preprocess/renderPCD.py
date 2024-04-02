@@ -147,7 +147,7 @@ class visualizer:
 
 if __name__ == '__main__':
     # 获取配置参数
-    config_filepath = 'config/renderPCD.json'
+    config_filepath = 'configs/renderPCD.json'
     specs = parseConfig(config_filepath)
 
     filename_tree = getFilenameTree(specs)

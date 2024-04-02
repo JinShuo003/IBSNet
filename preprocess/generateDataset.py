@@ -109,7 +109,7 @@ def generate_split_file(dataset_path, dir_name, filename, dataset, specs):
 
 if __name__ == '__main__':
     # 获取配置参数
-    configFile_path = 'config/generateDataset.json'
+    configFile_path = 'configs/generateDataset.json'
     specs = parse_config(configFile_path)
 
     dataset_path = specs["dataset_path"]

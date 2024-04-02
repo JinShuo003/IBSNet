@@ -142,7 +142,7 @@ def my_process(scene, specs):
 
 if __name__ == '__main__':
     # 获取配置参数
-    config_filepath = 'config/samplePointsFromMesh.json'
+    config_filepath = 'configs/samplePointsFromMesh.json'
     specs = parseConfig(config_filepath)
     # 构建文件树
     filename_tree = getFilenameTree(specs, "mesh_dir")

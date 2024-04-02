@@ -614,7 +614,6 @@ class TrainDataGenerator:
         return sdf_data_indirect
 
     def get_scan_pcd(self):
-        """获取残缺点云数据，即完整点云下的sdf场(x, y, z, sdf1, sdf2)"""
         scanPcdGenerator = ScanPcdGenerator(self.specs, self.specs["visualize"], self.mesh1, self.mesh2)
         return scanPcdGenerator.generate_scan_pcd()
 
@@ -693,7 +692,7 @@ def my_process(scene, specs):
 
 if __name__ == '__main__':
     # 获取配置参数
-    config_filepath = 'config/generateTrainData.json'
+    config_filepath = 'configs/generateTrainData.json'
     specs = parseConfig(config_filepath)
     processNum = specs["process_num"]
     # 构建文件树

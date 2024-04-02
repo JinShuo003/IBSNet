@@ -1,11 +1,11 @@
 {
-  "mesh_dir": "D:\\dataset\\IBSNet\\mesh",
-  "ibs_dir": "D:\\dataset\\IBSNet\\ibs",
-  "IOUgt_dir": "D:\\dataset\\IBSNet\\boundingBox",
-  "pcd_partial_save_dir": "D:\\dataset\\IBSNet\\pcd\\IBSNet_scan_512",
-  "sdf_indirect_complete_save_dir": "D:\\dataset\\IBSNet\\SdfSamples\\IBSNet_scan_512",
-  "sdf_indirect_partial_save_dir": "D:\\dataset\\IBSNet\\scanSdf\\IBSNet_scan_512",
-  "sdf_direct_save_dir": "D:\\dataset\\IBSNet\\SdfSamplesDirect\\IBSNet_scan_512",
+  "mesh_dir": "D:\\dataset\\IBSNet\\trainData\\mesh",
+  "ibs_dir": "D:\\dataset\\IBSNet\\evaluateData\\IBS_mesh_complete",
+  "IOUgt_dir": "D:\\dataset\\IBSNet\\trainData\\boundingBox",
+  "pcd_partial_save_dir": "D:\\dataset\\IBSNet\\trainData\\pcdScan\\IBSNet_scan_1024",
+  "sdf_indirect_complete_save_dir": "D:\\dataset\\IBSNet\\trainData\\SdfSamples\\IBSNet_scan_1024",
+  "sdf_indirect_partial_save_dir": "D:\\dataset\\IBSNet\\trainData\\scanSdf\\IBSNet_scan_1024",
+  "sdf_direct_save_dir": "D:\\dataset\\IBSNet\\trainData\\SdfSamplesDirect\\IBSNet_scan_1024",
 
   "category_re": "scene\\d",
   "scene_re": "scene\\d.\\d{4}",
@@ -13,7 +13,7 @@
 
   "save_data": true,
   "visualize": false,
-  "process_num": 3,
+  "process_num": 1,
 
   "scan_options": {
     "scan_num": 12,
@@ -24,7 +24,7 @@
     "height_px": 4096
   },
   "PCD_sample_options": {
-    "number_of_points": 512,
+    "number_of_points": 1024,
     "sample_method": "poisson"
   },
   "sdf_sample_options_indirect": {

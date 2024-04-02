@@ -6,3 +6,4 @@
 /tensorboard_logs
 *.pth
 /test_result
+logs

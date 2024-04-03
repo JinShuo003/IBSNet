@@ -5,5 +5,11 @@
 */sftp.json
 /tensorboard_logs
 *.pth
+<<<<<<< HEAD
 /test_result
 logs
+=======
+events*
+/test_result
+history_result
+>>>>>>> 70da7ba (feat: 修改.gitignore)

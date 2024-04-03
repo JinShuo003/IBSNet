@@ -363,27 +363,21 @@ class IndirectSdfSampleGenerator:
         sphere_points = []
 
         while len(mesh1_points) < mesh1_num:
-            # 获取随机点，如果是初次采样则先生成比较多的点，留下seed点，否则从seed点出发进行扩充
             if len(mesh1_points) == 0:
                 random_points = randomNum.get_random_points_in_sphere(200000)
             else:
                 random_points = randomNum.get_random_points_from_seeds(mesh1_points, 3, dist * 3)
-            # 计算随机点到ibs的距离
             dists = self.query_dist(mesh1, random_points)
-            # 保留满足筛选条件的点
             mesh1_points += [random_points[i] for i in range(len(random_points)) if
                            dists[i] <= dist and np.linalg.norm(random_points[i]) <= 0.5]
         mesh1_points = np.array(random.sample(mesh1_points, mesh1_num))
 
         while len(mesh2_points) < mesh2_num:
-            # 获取随机点，如果是初次采样则先生成比较多的点，留下seed点，否则从seed点出发进行扩充
             if len(mesh2_points) == 0:
                 random_points = randomNum.get_random_points_in_sphere(200000)
             else:
                 random_points = randomNum.get_random_points_from_seeds(mesh2_points, 3, dist * 3)
-            # 计算随机点到ibs的距离
             dists = self.query_dist(mesh2, random_points)
-            # 保留满足筛选条件的点
             mesh2_points += [random_points[i] for i in range(len(random_points)) if
                            dists[i] <= dist and np.linalg.norm(random_points[i]) <= 0.5]
         mesh2_points = np.array(random.sample(mesh2_points, mesh2_num))
@@ -446,14 +440,11 @@ class DirectSdfSampleGenerator:
         points_ibs = []
         points_other = []
 
-        # 生成随机点，保留落在ibs面一定距离内的点，直到采集够点数为止
         while len(points_ibs) < points_num_ibs:
-            # 获取随机点，如果是初次采样则先生成比较多的点，留下seed点，否则从seed点出发进行扩充
             if len(points_ibs) == 0:
                 random_points = randomNum.get_random_points_in_sphere(200000)
             else:
                 random_points = randomNum.get_random_points_from_seeds(points_ibs, 3, clamp_dist * 3)
-            # 计算随机点到ibs的距离
             dists = self.query_dist(ibs_mesh, random_points)
             # 保留满足筛选条件的点
             points_ibs += [random_points[i] for i in range(len(random_points)) if
@@ -464,7 +455,7 @@ class DirectSdfSampleGenerator:
         return np.concatenate([points_ibs, points_other], axis=0)
 
     def get_sdf_values(self, ibs, sdf_samples):
-        """获取sdf_samples在pcd1，pcd2场内的sdf值，拼接成(x, y, z, sdf1, sdf2)的形式"""
+        """获取sdf_samples在ibs_mesh场内的sdf值，拼接成(x, y, z, sdf)的形式"""
         dists = self.query_dist(ibs, sdf_samples).numpy().reshape(-1, 1)
         SDF_data = np.concatenate([sdf_samples, dists], axis=1)
         return SDF_data
@@ -649,9 +640,9 @@ class TrainDataGenerator:
         self.geometries_path = getGeometriesPath(self.specs, scene)
         self.get_init_geometries()
 
-        # 直接法(x, y, z, sdf)
-        print("begin generate direct data")
-        sdf_data_direct = self.get_direct_sdf_data(self.ibs_mesh)
+        # # 直接法(x, y, z, sdf)
+        # print("begin generate direct data")
+        # sdf_data_direct = self.get_direct_sdf_data(self.ibs_mesh)
 
         # 间接法(x, y, z, sdf1, sdf2)
         print("begin generate indirect data")

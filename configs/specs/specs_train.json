@@ -1,30 +1,33 @@
 {
-    "Description" : "Compute two SDF fields",
+    "TAG": "IBSNet_transformer_IM",
+    "Description" : "model: PointAttN, dataset: INTE_norm",
     "DataSource" : "data",
-    "TrainSplit" : "configs/train_split/train_scene8.json",
-    "ValSplit" : "configs/validate_split/validate_scene8.json",
-    "ParaSaveDir" : "trained_models",
+    "TrainSplit" : "dataset/train_INTE/train.json",
+    "TestSplit" : "dataset/test_INTE/test.json",
+    "ParaSaveDir" : "model_paras",
+    "TensorboardLogDir" : "tensorboard_logs/INTE/comparison",
     "Device" : 0,
-    "NetworkSpecs" : {
-        "dims" : [512, 512, 512, 512, 512, 512, 512, 512],
-        "dropout" : [0, 1, 2, 3, 4, 5, 6, 7],
-        "dropout_prob" : 0.2,
-        "norm_layers" : [0, 1, 2, 3, 4, 5, 6, 7],
-        "latent_in" : [4],
-        "xyz_in_all" : false,
-        "use_tanh" : false,
-        "latent_dropout" : false,
-        "weight_norm" : true
+    "SamplesPerScene" : 50000,
+    "TrainOptions": {
+        "NumEpochs" : 400,
+        "BatchSize" : 128,
+        "DataLoaderThreads" : 8,
+        "ContinueTrain": false,
+        "ContinueFromEpoch": 0,
+        "LearningRateOptions": {
+            "LRScheduler": "StepLR",
+            "InitLearningRate": 1e-4,
+            "StepSize": 100,
+            "Gamma": 0.5
+        }
     },
-    "NumEpochs" : 1600,
-    "CodeLength": 256,
-    "LearningRateSchedule" : {
-	    "Type" : "Step",
-	    "Initial" : 0.0005,
-	    "Interval" : 200,
-	    "Factor" : 0.5
-        },
-    "SamplesPerScene" : 30000,
-    "ScenesPerBatch" : 16,
-    "DataLoaderThreads" : 16
+    "LogOptions": {
+        "TAG": "IBSNet_transformer_IM",
+        "Type": "train",
+        "LogDir" : "logs",
+        "GlobalLevel": "INFO",
+        "FileLevel": "INFO",
+        "StreamLevel": "INFO",
+        "Mode": "w"
+    }
 }

@@ -18,7 +18,7 @@ def parse_config(config_filepath: str = './config/generateSDF.json'):
 
 
 def serialize_data(specs):
-    sdf_sample_path = specs["sdf_sample_path"]
+    pcd_scan_dir = specs["pcd_scan_dir"]
     scenename_re = specs["scenename_re"]
     filename_re = specs["filename_re"]
     categories = specs["categories"]
@@ -26,12 +26,14 @@ def serialize_data(specs):
     scenename_list = []
     for category in categories:
         data[category] = {}
-        filename_list = os.listdir(os.path.join(sdf_sample_path, category))
+        filename_list = os.listdir(os.path.join(pcd_scan_dir, category))
         for filename in filename_list:
             scenename = re.match(scenename_re, filename).group()
             if not scenename in data[category].keys():
                 data[category][scenename] = []
-            data[category][scenename].append(re.match(filename_re, filename).group())
+            filename = re.match(filename_re, filename).group()
+            if not filename in data[category][scenename]:
+                data[category][scenename].append(filename)
 
     for category in data.keys():
         scenename_cur_list = []
@@ -109,7 +111,7 @@ def generate_split_file(dataset_path, dir_name, filename, dataset, specs):
 
 if __name__ == '__main__':
     # 获取配置参数
-    configFile_path = 'configs/generateDataset.json'
+    configFile_path = 'configs/generate_dataset.json'
     specs = parse_config(configFile_path)
 
     dataset_path = specs["dataset_path"]

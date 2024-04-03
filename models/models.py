@@ -1,4 +1,4 @@
-from networks.models_utils import *
+from models.models_utils import *
 from torch import nn, einsum
 import torch
 import torch.nn.functional as F

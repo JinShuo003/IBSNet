@@ -1,8 +1,8 @@
-from networks.models_utils import *
+from models.models_utils import *
 from torch import nn, einsum
 import torch
 import torch.nn.functional as F
-from networks.pn2_utils import *
+from models.pn2_utils import *
 
 
 # -------------------------------------Encoder-----------------------------------

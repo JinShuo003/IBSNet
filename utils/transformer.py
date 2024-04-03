@@ -1,5 +1,5 @@
 from torch import nn
-from networks.pn2_utils import *
+from models.pn2_utils import *
 
 
 class PN2_Encoder(nn.Module):

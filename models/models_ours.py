@@ -90,7 +90,7 @@ class PN2_Transformer_Encoder(nn.Module):
         point_cloud: b, n, 3
 
         Returns:
-        l3_points: (B, out_dim, 1)
+        l3_points: (B, out_dim)
         """
         point_cloud = point_cloud.permute(0, 2, 1)
         l0_xyz = point_cloud

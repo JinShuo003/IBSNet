@@ -148,7 +148,7 @@ def save_model(specs, model, lr_schedule, optimizer, epoch):
     para_save_dir = specs.get("ParaSaveDir")
     para_save_path = os.path.join(para_save_dir, specs.get("TAG"))
     if not os.path.isdir(para_save_path):
-        os.mkdir(para_save_path)
+        os.makedirs(para_save_path)
     
     checkpoint = {
         "epoch": epoch,

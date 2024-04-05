@@ -18,11 +18,11 @@ def get_instance_filenames(data_source, split):
     for dataset in split:
         for class_name in split[dataset]:
             for instance_name in split[dataset][class_name]:
-                scene_name = re.match(scene_patten, instance_name)
+                scene_name = re.match(scene_patten, instance_name).group()
                 instance_filename = os.path.join(dataset, class_name, scene_name + ".npz")
                 pcd1_filename = os.path.join(dataset, class_name, instance_name + "_0.ply")
                 pcd2_filename = os.path.join(dataset, class_name, instance_name + "_1.ply")
-                if not os.path.isfile(os.path.join(data_source, ws.sdf_samples_subdir, instance_filename)):
+                if not os.path.isfile(os.path.join(data_source, ws.udf_samples_subdir, instance_filename)):
                     logging.warning("Requested non-existent file '{}'".format(instance_filename))
                 npzfiles += [instance_filename]
                 pcd1files += [pcd1_filename]
@@ -32,8 +32,8 @@ def get_instance_filenames(data_source, split):
 
 
 def unpack_udf_samples(filename):
-    data = np.load(filename)
-    return torch.from_numpy(data)
+    data = np.load(filename)['data']
+    return torch.from_numpy(np.asarray(data, dtype=np.float32))
 
 
 def get_pcd_data(pcd_filename):
@@ -51,12 +51,12 @@ class UDFSamples(torch.utils.data.Dataset):
         return len(self.npyfiles)
 
     def __getitem__(self, idx):
-        sdf_filename = os.path.join(self.data_source, ws.sdf_samples_subdir, self.npyfiles[idx])
+        udf_filename = os.path.join(self.data_source, ws.udf_samples_subdir, self.npyfiles[idx])
         pcd1_filename = os.path.join(self.data_source, ws.pcd_samples_subdir, self.pcd1files[idx])
         pcd2_filename = os.path.join(self.data_source, ws.pcd_samples_subdir, self.pcd2files[idx])
 
         pcd1 = get_pcd_data(pcd1_filename)
         pcd2 = get_pcd_data(pcd2_filename)
-        sdf_data = unpack_udf_samples(sdf_filename)
+        sdf_data = unpack_udf_samples(udf_filename)
 
         return pcd1, pcd2, sdf_data, idx

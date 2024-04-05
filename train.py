@@ -1,5 +1,7 @@
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+
 import argparse
-import logging
 import time
 import os.path
 from datetime import datetime, timedelta
@@ -24,26 +26,31 @@ def train(network, train_dataloader, lr_schedule, optimizer, epoch, specs, tenso
     train_total_loss_l1 = 0
     train_total_loss_l2 = 0
     for data in train_dataloader:
-        pcd1, pcd2, sdf_data, indices = data
+        pcd1, pcd2, udf_data, indices = data
+        udf_data = udf_data.reshape(-1, 5)
 
         optimizer.zero_grad()
 
-        xyz = sdf_data[:, 0:3]
-        udf_gt1 = sdf_data[:, 3].unsqueeze(1).to(device)
-        udf_gt2 = sdf_data[:, 4].unsqueeze(1).to(device)
+        xyz = udf_data[:, 0:3]
+        udf_gt1 = udf_data[:, 3].to(device)
+        udf_gt2 = udf_data[:, 4].to(device)
         pcd1 = pcd1.to(device)
         pcd2 = pcd2.to(device)
         xyz = xyz.to(device)
 
         udf_pred1, udf_pred2 = network(pcd1, pcd2, xyz)
-
-        l1_loss = (loss_l1(udf_pred1, udf_gt1) + loss_l1(udf_pred2, udf_gt2)) / 2
-        l2_loss = (loss_l2(udf_pred1, udf_gt1) + loss_l2(udf_pred2, udf_gt2)) / 2
+        
+        l1_loss_obj1 = loss_l1(udf_pred1, udf_gt1)
+        l1_loss_obj2 = loss_l1(udf_pred2, udf_gt2)
+        l2_loss_obj1 = loss_l2(udf_pred1, udf_gt1)
+        l2_loss_obj2 = loss_l2(udf_pred2, udf_gt2)
+        l1_loss = (l1_loss_obj1 + l1_loss_obj2) / 2
+        l2_loss = (l2_loss_obj1 + l2_loss_obj2) / 2
 
         train_total_loss_l1 += l1_loss.item()
         train_total_loss_l2 += l2_loss.item()
 
-        l1_loss.backward()
+        l2_loss.backward()
         optimizer.step()
 
     lr_schedule.step()
@@ -65,24 +72,25 @@ def test(network, test_dataloader, lr_schedule, optimizer, epoch, specs, tensorb
     test_total_loss_l2 = 0
     with torch.no_grad():
         for data in test_dataloader:
-            pcd1, pcd2, sdf_data, indices = data
-            pcd1.requires_grad = False
-            pcd2.requires_grad = False
-            sdf_data.requires_grad = False
+            pcd1, pcd2, udf_data, indices = data
+            udf_data = udf_data.reshape(-1, 5)
 
-            xyz = sdf_data[:, 0:3]
-            udf_gt1 = sdf_data[:, 3].unsqueeze(1).to(device)
-            udf_gt2 = sdf_data[:, 4].unsqueeze(1).to(device)
+            xyz = udf_data[:, 0:3]
+            udf_gt1 = udf_data[:, 3].to(device)
+            udf_gt2 = udf_data[:, 4].to(device)
             pcd1 = pcd1.to(device)
             pcd2 = pcd2.to(device)
             xyz = xyz.to(device)
 
             udf_pred1, udf_pred2 = network(pcd1, pcd2, xyz)
 
-            l1_loss = (loss_l1(udf_pred1, udf_gt1) + loss_l1(udf_pred2, udf_gt2)) / 2
-            l2_loss = (loss_l2(udf_pred1, udf_gt1) + loss_l2(udf_pred2, udf_gt2)) / 2
+            l1_loss_obj1 = loss_l1(udf_pred1, udf_gt1)
+            l1_loss_obj2 = loss_l1(udf_pred2, udf_gt2)
+            l2_loss_obj1 = loss_l2(udf_pred1, udf_gt1)
+            l2_loss_obj2 = loss_l2(udf_pred2, udf_gt2)
+            l1_loss = (l1_loss_obj1 + l1_loss_obj2) / 2
+            l2_loss = (l2_loss_obj1 + l2_loss_obj2) / 2
 
-            # 统计一个epoch的平均loss
             test_total_loss_l1 += l1_loss.item()
             test_total_loss_l2 += l2_loss.item()
 

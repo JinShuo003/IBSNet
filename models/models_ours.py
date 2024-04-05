@@ -5,25 +5,25 @@ import torch.nn.functional as F
 
 
 class PN2_Transformer_Encoder_new(nn.Module):
-    def __init__(self, pcd_size=2048, latent_size=512):
+    def __init__(self, points_num=2048, latent_size=512):
         """Encoder that encodes information of partial point cloud"""
         super().__init__()
 
         self.mlp_in = nn.Sequential(
             nn.Linear(3, 16),
-            nn.BatchNorm1d(pcd_size),
+            nn.BatchNorm1d(points_num),
             nn.ReLU(inplace=True),
             nn.Linear(16, 32))
 
         self.transformer_in = Transformer(32)
 
-        self.transitionDown_1 = PointNet_SA_Module_KNN(int(pcd_size / 4), 16, 32, [32, 64])
+        self.transitionDown_1 = PointNet_SA_Module_KNN(int(points_num / 4), 16, 32, [32, 64])
         self.transformer_1 = Transformer(64)
 
-        self.transitionDown_2 = PointNet_SA_Module_KNN(int(pcd_size / 16), 16, 64, [64, 128])
+        self.transitionDown_2 = PointNet_SA_Module_KNN(int(points_num / 16), 16, 64, [64, 128])
         self.transformer_2 = Transformer(128)
 
-        self.transitionDown_3 = PointNet_SA_Module_KNN(int(pcd_size / 64), 16, 128, [128, 256])
+        self.transitionDown_3 = PointNet_SA_Module_KNN(int(points_num / 64), 16, 128, [128, 256])
         self.transformer_3 = Transformer(256)
 
         self.mlp_out = nn.Sequential(
@@ -65,7 +65,7 @@ class PN2_Transformer_Encoder_new(nn.Module):
 
 
 class PN2_Transformer_Encoder(nn.Module):
-    def __init__(self, pcd_size=1024, latent_size=512):
+    def __init__(self, points_num=2048, latent_size=256):
         """Encoder that encodes information of partial point cloud"""
         super().__init__()
         layer_1_in_size = int(latent_size / 8)
@@ -74,10 +74,10 @@ class PN2_Transformer_Encoder(nn.Module):
         layer_2_out_size = int(latent_size / 2)
         layer_3_in_size = int(latent_size / 2)
         layer_3_out_size = latent_size
-        self.sa_module_1 = PointNet_SA_Module_KNN(int(pcd_size / 2), 16, 3, [layer_1_in_size, layer_1_out_size],
+        self.sa_module_1 = PointNet_SA_Module_KNN(int(points_num / 2), 16, 3, [layer_1_in_size, layer_1_out_size],
                                                   group_all=False, if_bn=False, if_idx=True)
         self.transformer_1 = Transformer(layer_1_out_size, dim=32)
-        self.sa_module_2 = PointNet_SA_Module_KNN(int(pcd_size / 4), 16, layer_2_in_size,
+        self.sa_module_2 = PointNet_SA_Module_KNN(int(points_num / 4), 16, layer_2_in_size,
                                                   [layer_2_in_size, layer_2_out_size], group_all=False, if_bn=False,
                                                   if_idx=True)
         self.transformer_2 = Transformer(layer_2_out_size, dim=32)
@@ -112,12 +112,19 @@ class IM_Decoder(nn.Module):
         print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Building IM-decoder.')
         super().__init__()
 
-        self.linear_0 = nn.Linear(input_dim, 2048, bias=True)
-        self.linear_1 = nn.Linear(input_dim + 2048, 1024, bias=True)
-        self.linear_2 = nn.Linear(input_dim + 1024, 512, bias=True)
-        self.linear_3 = nn.Linear(input_dim + 512, 256, bias=True)
-        self.linear_4 = nn.Linear(input_dim + 256, 128, bias=True)
-        self.linear_5 = nn.Linear(128, 2, bias=True)
+        # self.linear_0 = nn.Linear(input_dim, 2048, bias=True)
+        # self.linear_1 = nn.Linear(input_dim + 2048, 1024, bias=True)
+        # self.linear_2 = nn.Linear(input_dim + 1024, 512, bias=True)
+        # self.linear_3 = nn.Linear(input_dim + 512, 256, bias=True)
+        # self.linear_4 = nn.Linear(input_dim + 256, 128, bias=True)
+        # self.linear_5 = nn.Linear(128, 2, bias=True)
+
+        self.linear_0 = nn.Linear(input_dim, 512, bias=True)
+        self.linear_1 = nn.Linear(input_dim + 512, 512, bias=True)
+        self.linear_2 = nn.Linear(input_dim + 512, 512, bias=True)
+        self.linear_3 = nn.Linear(input_dim + 512, 512, bias=True)
+        self.linear_4 = nn.Linear(input_dim + 512, 512, bias=True)
+        self.linear_5 = nn.Linear(512, 2, bias=True)
 
         num_params = sum(p.data.nelement() for p in self.parameters())
         print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'IM decoder done(#parameters=%d).' % num_params)
@@ -143,16 +150,16 @@ class IM_Decoder(nn.Module):
         l4 = F.leaky_relu(l4, negative_slope=0.02, inplace=True)
 
         l5 = self.linear_5(l4)
-        return l5[:, :, 0], l5[:, :, 1]
+        return l5[:, 0], l5[:, 1]
 
 
 class IBSNet(nn.Module):
-    def __init__(self, latent_size):
+    def __init__(self, points_num=2048, latent_size=256):
         print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Building network.')
         super().__init__()
 
-        self.encoder1 = PN2_Transformer_Encoder_new(pcd_size=2048, latent_size=256)
-        self.encoder2 = PN2_Transformer_Encoder_new(pcd_size=2048, latent_size=256)
+        self.encoder1 = PN2_Transformer_Encoder_new(points_num=points_num, latent_size=latent_size)
+        self.encoder2 = PN2_Transformer_Encoder_new(points_num=points_num, latent_size=latent_size)
 
         self.decoder = IM_Decoder(2 * latent_size + 3)
 
@@ -169,16 +176,13 @@ class IBSNet(nn.Module):
             ufd1_pred: tensor, (batch_size, query_points_num)
             ufd2_pred: tensor, (batch_size, query_points_num)
         """
-        B, N, d = query_points.shape
-
         latentcode1 = self.encoder1(pcd1)
+        latentcode1 = latentcode1.repeat_interleave(50000, dim=0)
         latentcode2 = self.encoder2(pcd2)
+        latentcode2 = latentcode2.repeat_interleave(50000, dim=0)
 
-        latentcode1 = latentcode1.unsqueeze(1).repeat(1, N, 1)
-        latentcode2 = latentcode2.unsqueeze(1).repeat(1, N, 1)
+        latentcode = torch.cat([latentcode1, latentcode2, query_points], 1)
 
-        batch_input = torch.cat([latentcode1, latentcode2, query_points], dim=-1)
-
-        ufd1_pred, udf2_pred = self.decoder(batch_input)
+        ufd1_pred, udf2_pred = self.decoder(latentcode)
 
         return ufd1_pred, udf2_pred

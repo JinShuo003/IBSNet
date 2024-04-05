@@ -1,6 +1,7 @@
 .idea/
 .vscode/
 .git/
+__pycache__
 
 tensorboard_logs
 result

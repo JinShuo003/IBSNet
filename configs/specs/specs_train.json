@@ -1,28 +1,28 @@
 {
-    "TAG": "IBSNet_transformer_IM",
-    "Description" : "model: PointAttN, dataset: INTE_norm",
+    "TAG": "IBSNet_transformerNew_IM_lr5e4",
+    "Description" : "新版编码器，学习率20轮降为0.5，初始值5e-4",
     "DataSource" : "data",
-    "TrainSplit" : "dataset/train_INTE/train.json",
-    "TestSplit" : "dataset/test_INTE/test.json",
+    "TrainSplit" : "dataset/train/train.json",
+    "TestSplit" : "dataset/test/test.json",
     "ParaSaveDir" : "model_paras",
-    "TensorboardLogDir" : "tensorboard_logs/INTE/comparison",
+    "TensorboardLogDir" : "tensorboard_logs/",
     "Device" : 0,
     "SamplesPerScene" : 50000,
     "TrainOptions": {
         "NumEpochs" : 400,
-        "BatchSize" : 128,
+        "BatchSize" : 7,
         "DataLoaderThreads" : 8,
         "ContinueTrain": false,
         "ContinueFromEpoch": 0,
         "LearningRateOptions": {
             "LRScheduler": "StepLR",
-            "InitLearningRate": 1e-4,
-            "StepSize": 100,
+            "InitLearningRate": 5e-4,
+            "StepSize": 20,
             "Gamma": 0.5
         }
     },
     "LogOptions": {
-        "TAG": "IBSNet_transformer_IM",
+        "TAG": "IBSNet_transformerNew_IM_lr5e4",
         "Type": "train",
         "LogDir" : "logs",
         "GlobalLevel": "INFO",

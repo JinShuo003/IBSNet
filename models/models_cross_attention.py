@@ -76,15 +76,15 @@ class PCT_encoder(nn.Module):
 
         self.relu = nn.GELU()
 
-        self.sa0_d = cross_transformer(channel * 8, channel * 8)
-        self.sa1_d = cross_transformer(channel * 8, channel * 8)
-        self.sa2_d = cross_transformer(channel * 8, channel * 8)
+        # self.sa0_d = cross_transformer(channel * 8, channel * 8)
+        # self.sa1_d = cross_transformer(channel * 8, channel * 8)
+        # self.sa2_d = cross_transformer(channel * 8, channel * 8)
 
-        self.conv_out = nn.Conv1d(64, 3, kernel_size=1)
-        self.conv_out1 = nn.Conv1d(channel * 4, 64, kernel_size=1)
-        self.ps = nn.ConvTranspose1d(channel * 8, channel, 128, bias=True)
-        self.ps_refuse = nn.Conv1d(channel, channel * 8, kernel_size=1)
-        self.ps_adj = nn.Conv1d(channel * 8, channel * 8, kernel_size=1)
+        # self.conv_out = nn.Conv1d(64, 3, kernel_size=1)
+        # self.conv_out1 = nn.Conv1d(channel * 4, 64, kernel_size=1)
+        # self.ps = nn.ConvTranspose1d(channel * 8, channel, 128, bias=True)
+        # self.ps_refuse = nn.Conv1d(channel, channel * 8, kernel_size=1)
+        # self.ps_adj = nn.Conv1d(channel * 8, channel * 8, kernel_size=1)
 
     def forward(self, points):
         batch_size, _, N = points.size()
@@ -116,20 +116,11 @@ class PCT_encoder(nn.Module):
         x3 = torch.cat([x_g2, x3], dim=1)
         # SFA
         x3 = self.sa3_1(x3, x3).contiguous()
-        # seed generator
+
         # maxpooling
         x_g = F.adaptive_max_pool1d(x3, 1).view(batch_size, -1).unsqueeze(-1)
-        x = self.relu(self.ps_adj(x_g))
-        x = self.relu(self.ps(x))
-        x = self.relu(self.ps_refuse(x))
-        # SFA
-        x0_d = (self.sa0_d(x, x))
-        x1_d = (self.sa1_d(x0_d, x0_d))
-        x2_d = (self.sa2_d(x1_d, x1_d)).reshape(batch_size, self.channel * 4, N // 8)
 
-        fine = self.conv_out(self.relu(self.conv_out1(x2_d)))
-
-        return x_g, fine
+        return x_g
 
 
 class IM_Decoder(nn.Module):
@@ -144,8 +135,6 @@ class IM_Decoder(nn.Module):
         self.linear_3 = nn.Linear(input_dim + 512, 256, bias=True)
         self.linear_4 = nn.Linear(input_dim + 256, 128, bias=True)
         self.linear_5 = nn.Linear(128, 2, bias=True)
-
-        num_params = sum(p.data.nelement() for p in self.parameters())
 
     def forward(self, batch_input):
         l0 = self.linear_0(batch_input)
@@ -168,15 +157,16 @@ class IM_Decoder(nn.Module):
         l4 = F.leaky_relu(l4, negative_slope=0.02, inplace=True)
 
         l5 = self.linear_5(l4)
-        return l5[:, :, 0], l5[:, :, 1]
+        return l5[:, 0], l5[:, 1]
 
 
 class IBSNet(nn.Module):
     def __init__(self, latent_size=512):
         super().__init__()
-
-        self.encoder1 = PCT_encoder(channel=latent_size)
-        self.encoder2 = PCT_encoder(channel=latent_size)
+        
+        channel = int(latent_size/8)
+        self.encoder1 = PCT_encoder(channel=channel)
+        self.encoder2 = PCT_encoder(channel=channel)
 
         self.decoder = IM_Decoder(2 * latent_size + 3)
 
@@ -185,21 +175,20 @@ class IBSNet(nn.Module):
         Args:
             pcd1: tensor, (batch_size, pcd_points_num, 3)
             pcd2: tensor, (batch_size, pcd_points_num, 3)
-            query_points: tensor, (batch_size, query_points_num, 3)
+            query_points: tensor, (batch_size*query_points_num, 3)
         Returns:
-            ufd1_pred: tensor, (batch_size, query_points_num)
-            ufd2_pred: tensor, (batch_size, query_points_num)
+            udf1_pred: tensor, (batch_size, query_points_num)
+            udf2_pred: tensor, (batch_size, query_points_num)
         """
-        B, N, d = query_points.shape
+        pcd1 = pcd1.transpose(1, 2).contiguous()
+        pcd2 = pcd2.transpose(1, 2).contiguous()
+        latentcode1 = self.encoder1(pcd1).squeeze(-1)
+        latentcode1 = latentcode1.repeat_interleave(50000, dim=0)
+        latentcode2 = self.encoder2(pcd2).squeeze(-1)
+        latentcode2 = latentcode2.repeat_interleave(50000, dim=0)
 
-        latentcode1 = self.encoder1(pcd1)
-        latentcode2 = self.encoder2(pcd2)
+        latentcode = torch.cat([latentcode1, latentcode2, query_points], 1)
 
-        latentcode1 = latentcode1.unsqueeze(1).repeat(1, N, 1)
-        latentcode2 = latentcode2.unsqueeze(1).repeat(1, N, 1)
+        udf1_pred, udf2_pred = self.decoder(latentcode)
 
-        batch_input = torch.cat([latentcode1, latentcode2, query_points], dim=-1)
-
-        ufd1_pred, udf2_pred = self.decoder(batch_input)
-
-        return ufd1_pred, udf2_pred
+        return udf1_pred, udf2_pred

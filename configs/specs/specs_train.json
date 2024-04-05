@@ -10,7 +10,7 @@
     "SamplesPerScene" : 50000,
     "TrainOptions": {
         "NumEpochs" : 400,
-        "BatchSize" : 7,
+        "BatchSize" : 4,
         "DataLoaderThreads" : 8,
         "ContinueTrain": false,
         "ContinueFromEpoch": 0,

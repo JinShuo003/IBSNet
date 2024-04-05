@@ -1,6 +1,6 @@
 {
-    "TAG": "IBSNet_transformerNew_IM_lr5e4",
-    "Description" : "新版编码器，学习率20轮降为0.5，初始值5e-4",
+    "TAG": "IBSNet_crossattention_IM",
+    "Description" : "Encoder: Cross Attention，Decoder: IMNet",
     "DataSource" : "data",
     "TrainSplit" : "dataset/train/train.json",
     "TestSplit" : "dataset/test/test.json",
@@ -22,7 +22,7 @@
         }
     },
     "LogOptions": {
-        "TAG": "IBSNet_transformerNew_IM_lr5e4",
+        "TAG": "IBSNet_crossattention_IM",
         "Type": "train",
         "LogDir" : "logs",
         "GlobalLevel": "INFO",

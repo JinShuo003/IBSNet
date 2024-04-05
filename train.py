@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from utils import path_utils
 from utils.train_utils import *
 from dataset import dataset_udfSamples
-from models.models_ours import IBSNet
+from models.models_cross_attention import IBSNet
 
 
 def train(network, train_dataloader, lr_schedule, optimizer, epoch, specs, tensorboard_writer):

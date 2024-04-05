@@ -136,7 +136,6 @@ class IM_Decoder(nn.Module):
     """l2+leakyRelu+noNorm+noDrop+all+changeDim-6"""
 
     def __init__(self, input_dim):
-        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Building IM-decoder.')
         super().__init__()
 
         self.linear_0 = nn.Linear(input_dim, 2048, bias=True)
@@ -147,7 +146,6 @@ class IM_Decoder(nn.Module):
         self.linear_5 = nn.Linear(128, 2, bias=True)
 
         num_params = sum(p.data.nelement() for p in self.parameters())
-        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'IM decoder done(#parameters=%d).' % num_params)
 
     def forward(self, batch_input):
         l0 = self.linear_0(batch_input)
@@ -175,16 +173,12 @@ class IM_Decoder(nn.Module):
 
 class IBSNet(nn.Module):
     def __init__(self, latent_size=512):
-        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Building network.')
         super().__init__()
 
         self.encoder1 = PCT_encoder(channel=latent_size)
         self.encoder2 = PCT_encoder(channel=latent_size)
 
         self.decoder = IM_Decoder(2 * latent_size + 3)
-
-        num_params = sum(p.data.nelement() for p in self.parameters())
-        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Network done(#parameters=%d).' % num_params)
 
     def forward(self, pcd1, pcd2, query_points):
         """

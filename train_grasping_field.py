@@ -113,7 +113,7 @@ def main_function(specs):
 
     TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S/}".format(datetime.now() + timedelta(hours=8))
 
-    logger.info("current network TAG: {}".format(specs.get("TAG")))
+    logger.info("current model TAG: {}".format(specs.get("TAG")))
     logger.info("current time: {}".format(TIMESTAMP))
     logger.info("There are {} epochs in total".format(epoch_num))
 

@@ -1,15 +1,27 @@
 {
-    "Description" : "Compute two SDF fields",
-    "DataSource" : "D:\\dataset\\IBSNet",
-    "TestSplit" : "configs/test_scan_split/test_scene1.json",
-    "TestResult" : "test_result",
-    "Device" : 0,
-    "SamplesPerScene" : 30000,
-    "ScenesPerBatch" : 4,
-    "DataLoaderThreads" : 4,
-    "IBSSurfaceThreshold": 0.001,
-    "Visualize": true,
-    "Save": true,
-    "SaveDir": "test_result\\sdf"
-
+  "TAG": "IBSNet_transformerEncoder_IMDecoder",
+  "DataSource": "data",
+  "TestSplit": "dataset/test/test.json",
+  "ModelPath": "",
+  "CategoryPatten": "scene\\d+",
+  "ScenePatten": "scene\\d+.\\d+",
+  "FileNamePatten": "scene\\d.\\d{4}_view\\d+",
+  "ResultSaveDir": "test_result",
+  "Device": 0,
+  "BatchSize": 128,
+  "DataLoaderThreads": 8,
+  "ReconstructOptions": {
+    "ReconstructPointsNum": 16384,
+    "SeedPointNum": 20000,
+    "IBSThreshold": 0.01
+  },
+  "LogOptions": {
+    "TAG": "IBSNet_transformerEncoder_IMDecoder",
+    "Type": "test",
+    "LogDir": "logs",
+    "GlobalLevel": "INFO",
+    "FileLevel": "INFO",
+    "StreamLevel": "INFO",
+    "Mode": "w"
+  }
 }

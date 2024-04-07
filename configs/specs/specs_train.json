@@ -16,7 +16,7 @@
         "ContinueFromEpoch": 0,
         "LearningRateOptions": {
             "LRScheduler": "StepLR",
-            "InitLearningRate": 5e-4,
+            "InitLearningRate": 1e-4,
             "StepSize": 20,
             "Gamma": 0.5
         }

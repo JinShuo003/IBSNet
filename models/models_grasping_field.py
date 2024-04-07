@@ -60,7 +60,7 @@ class ResnetPointnet(nn.Module):
         hidden_dim (int): hidden dimension of the network
     """
 
-    def __init__(self, c_dim=128, dim=3, hidden_dim=128):
+    def __init__(self, c_dim=256, dim=3, hidden_dim=128):
         super().__init__()
         self.c_dim = c_dim
         self.fc_pos = nn.Linear(dim, 2 * hidden_dim)
@@ -234,14 +234,14 @@ class DeepSDF_Decoder(nn.Module):
         if hasattr(self, "th"):
             x = self.th(x)
 
-        return x
+        return x[:, 0], x[:, 1]
 
 
 class IBSNet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.encoder_obj1 = ResnetPointnet()
-        self.encoder_obj2 = ResnetPointnet()
+        self.encoder1 = ResnetPointnet()
+        self.encoder2 = ResnetPointnet()
         self.decoder = DeepSDF_Decoder()
         self.num_samp_per_scene = 50000
 
@@ -255,11 +255,11 @@ class IBSNet(nn.Module):
             udf1_pred: tensor, (batch_size, query_points_num)
             udf2_pred: tensor, (batch_size, query_points_num)
         """
-        pcd1 = pcd1.transpose(1, 2).contiguous()
-        pcd2 = pcd2.transpose(1, 2).contiguous()
+        # pcd1 = pcd1.transpose(1, 2).contiguous()
+        # pcd2 = pcd2.transpose(1, 2).contiguous()
         latentcode1 = self.encoder1(pcd1).squeeze(-1)
-        latentcode1 = latentcode1.repeat_interleave(50000, dim=0)
         latentcode2 = self.encoder2(pcd2).squeeze(-1)
+        latentcode1 = latentcode1.repeat_interleave(50000, dim=0)
         latentcode2 = latentcode2.repeat_interleave(50000, dim=0)
 
         latentcode = torch.cat([latentcode1, latentcode2, query_points], 1)

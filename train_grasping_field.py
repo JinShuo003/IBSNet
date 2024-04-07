@@ -152,7 +152,7 @@ if __name__ == '__main__':
         "--experiment",
         "-e",
         dest="experiment_config_file",
-        default="configs/specs/specs_train.json",
+        default="configs/specs/specs_train_grasping_field.json",
         required=False,
         help="The experiment config file."
     )

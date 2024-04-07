@@ -1,30 +1,33 @@
 {
-    "Description" : "Compute two SDF fields",
-    "DataSource" : "D:\\dataset\\IBSNet",
-    "TrainSplit" : "configs/train_512/train.json",
-    "TestSplit" : "configs/test_512/test.json",
-    "ParaSaveDir" : "trained_models",
+    "TAG": "Grasping_Field",
+    "Description" : "Grasping Field",
+    "DataSource" : "data",
+    "TrainSplit" : "dataset/train/train.json",
+    "TestSplit" : "dataset/test/test.json",
+    "ParaSaveDir" : "model_paras",
+    "TensorboardLogDir" : "tensorboard_logs/",
     "Device" : 0,
-    "NetworkSpecs" : {
-        "dims" : [1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024],
-        "dropout" : [0, 1, 2, 3, 4, 5, 6, 7],
-        "dropout_prob" : 0.2,
-        "norm_layers" : [0, 1, 2, 3, 4, 5, 6, 7],
-        "latent_in" : [4],
-        "xyz_in_all" : false,
-        "use_tanh" : false,
-        "latent_dropout" : false,
-        "weight_norm" : true
-    },
-    "NumEpochs" : 200,
-    "CodeLength": 512,
-    "LearningRateSchedule" : {
-	    "Type" : "Step",
-	    "Initial" : 0.0001,
-	    "Interval" : 5,
-	    "Factor" : 0.5
-        },
     "SamplesPerScene" : 50000,
-    "ScenesPerBatch" : 2,
-    "DataLoaderThreads" : 4
+    "TrainOptions": {
+        "NumEpochs" : 400,
+        "BatchSize" : 4,
+        "DataLoaderThreads" : 8,
+        "ContinueTrain": false,
+        "ContinueFromEpoch": 0,
+        "LearningRateOptions": {
+            "LRScheduler": "StepLR",
+            "InitLearningRate": 1e-4,
+            "StepSize": 5,
+            "Gamma": 0.5
+        }
+    },
+    "LogOptions": {
+        "TAG": "Grasping_Field",
+        "Type": "train",
+        "LogDir" : "logs",
+        "GlobalLevel": "INFO",
+        "FileLevel": "INFO",
+        "StreamLevel": "INFO",
+        "Mode": "w"
+    }
 }

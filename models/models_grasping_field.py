@@ -109,14 +109,14 @@ class ResnetPointnet(nn.Module):
 class Decoder(nn.Module):
     def __init__(
             self,
-            latent_size,
-            dims,
-            dropout=None,
-            dropout_prob=0.0,
-            norm_layers=(),
-            latent_in=(),
-            weight_norm=False,
-            xyz_in_all=None,
+            latent_size=512,
+            dims=[1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024],
+            dropout=[0, 1, 2, 3, 4, 5, 6, 7],
+            dropout_prob=0.2,
+            norm_layers=[0, 1, 2, 3, 4, 5, 6, 7],
+            latent_in=[4],
+            weight_norm=True,
+            xyz_in_all=False,
             use_tanh=False,
             latent_dropout=False,
     ):
@@ -238,12 +238,12 @@ class Decoder(nn.Module):
 
 
 class IBSNet(nn.Module):
-    def __init__(self, num_samp_per_scene):
+    def __init__(self):
         super().__init__()
         self.encoder_obj1 = ResnetPointnet()
         self.encoder_obj2 = ResnetPointnet()
         self.decoder = Decoder()
-        self.num_samp_per_scene = num_samp_per_scene
+        self.num_samp_per_scene = 50000
 
     def forward(self, x_obj1, x_obj2, xyz):
         x_obj1 = self.encoder_obj1(x_obj1)

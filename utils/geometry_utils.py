@@ -30,7 +30,7 @@ def read_mesh(path):
     Args:
         path: Mesh文件的路径
     Returns:
-        open3d.TriangleMesh
+        mesh: open3d.TriangleMesh
     """
     mesh = None
     try:

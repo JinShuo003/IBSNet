@@ -51,52 +51,27 @@ def get_dataloader(dataset_class, specs: dict):
     return test_dataloader
 
 
-def get_normalize_para(file_path):
-    with open(file_path, "r") as file:
-        content = file.read()
-        data = list(map(float, content.split(",")))
-        translate = data[0:3]
-        scale = data[-1]
-    return translate, scale
-
-
-def save_result(filename_list: list, pcd, specs: dict):
+def save_result(specs: dict, filename_list: list, ibs_pcd_list: list):
     save_dir = specs.get("ResultSaveDir")
     tag = specs.get("TAG")
-    dataset = specs.get("Dataset")
-    normalize_para_dir = specs.get("NormalizeParaDir")
 
     filename_patten = specs.get("FileNamePatten")
-    scene_patten = specs.get("ScenePatten")
-
-    pcd_np = pcd.cpu().detach().numpy()
 
     for index, filename_abs in enumerate(filename_list):
         # [dataset, category, filename], example:[MVP, scene1, scene1.1000_view0_0.ply]
         _, category, filename = filename_abs.split('/')
         filename = re.match(filename_patten, filename).group()  # scene1.1000_view0
-        scene = re.match(scene_patten, filename).group()  # scene1.1000
 
-        # normalize parameters
-        normalize_para_filename = "{}_{}.txt".format(scene, re.findall(r'\d+', filename)[-1])  # scene1.1000_0.txt
-        normalize_para_path = os.path.join(normalize_para_dir, category, normalize_para_filename)
-        translate, scale = get_normalize_para(normalize_para_path)
-
-        # the real directory is save_dir/tag/dataset/category
-        save_path = os.path.join(save_dir, tag, dataset, category)
+        # the real directory is save_dir/tag/category
+        save_path = os.path.join(save_dir, tag, category)
         if not os.path.isdir(save_path):
             os.makedirs(save_path)
 
-        # get final filename
         filename_final = "{}.ply".format(filename)
         absolute_path = os.path.join(save_path, filename_final)
-        pcd = get_pcd_from_np(pcd_np[index])
+        ibs_pcd = ibs_pcd_list[index]
 
-        # transform to origin coordinate
-        pcd.scale(scale, np.array([0, 0, 0]))
-        pcd.translate(translate)
-
-        o3d.io.write_point_cloud(absolute_path, pcd)
+        o3d.io.write_point_cloud(absolute_path, ibs_pcd)
 
 
 def create_zip(specs: dict):

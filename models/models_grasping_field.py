@@ -53,11 +53,11 @@ class ResnetBlockFC(nn.Module):
 
 # 带Resnet的Pointnet（完整的点云特征提取）
 class ResnetPointnet(nn.Module):
-    """ PointNet-based encoder network with ResNet blocks.
+    """ PointNet-based encoder model with ResNet blocks.
     Args:
         c_dim (int): dimension of latent code c
         dim (int): input points dimension
-        hidden_dim (int): hidden dimension of the network
+        hidden_dim (int): hidden dimension of the model
     """
 
     def __init__(self, c_dim=256, dim=3, hidden_dim=128):

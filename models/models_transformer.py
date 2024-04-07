@@ -127,7 +127,6 @@ class IM_Decoder(nn.Module):
         self.linear_5 = nn.Linear(512, 2, bias=True)
 
         num_params = sum(p.data.nelement() for p in self.parameters())
-        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'IM decoder done(#parameters=%d).' % num_params)
 
     def forward(self, batch_input):
         l0 = self.linear_0(batch_input)
@@ -155,7 +154,6 @@ class IM_Decoder(nn.Module):
 
 class IBSNet(nn.Module):
     def __init__(self, points_num=2048, latent_size=256):
-        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Building network.')
         super().__init__()
 
         self.encoder1 = PN2_Transformer_Encoder_new(points_num=points_num, latent_size=latent_size)
@@ -164,7 +162,6 @@ class IBSNet(nn.Module):
         self.decoder = IM_Decoder(2 * latent_size + 3)
 
         num_params = sum(p.data.nelement() for p in self.parameters())
-        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Network done(#parameters=%d).' % num_params)
 
     def forward(self, pcd1, pcd2, query_points):
         """

@@ -106,7 +106,7 @@ class ResnetPointnet(nn.Module):
         return c
 
 
-class Decoder(nn.Module):
+class DeepSDF_Decoder(nn.Module):
     def __init__(
             self,
             latent_size=512,
@@ -120,7 +120,7 @@ class Decoder(nn.Module):
             use_tanh=False,
             latent_dropout=False,
     ):
-        super(Decoder, self).__init__()
+        super(DeepSDF_Decoder, self).__init__()
 
         def make_sequence():
             return []
@@ -242,17 +242,28 @@ class IBSNet(nn.Module):
         super().__init__()
         self.encoder_obj1 = ResnetPointnet()
         self.encoder_obj2 = ResnetPointnet()
-        self.decoder = Decoder()
+        self.decoder = DeepSDF_Decoder()
         self.num_samp_per_scene = 50000
 
-    def forward(self, x_obj1, x_obj2, xyz):
-        x_obj1 = self.encoder_obj1(x_obj1)
-        latent_obj1 = x_obj1.repeat_interleave(self.num_samp_per_scene, dim=0)
-        x_obj2 = self.encoder_obj2(x_obj2)
-        latent_obj2 = x_obj2.repeat_interleave(self.num_samp_per_scene, dim=0)
+    def forward(self, pcd1, pcd2, query_points):
+        """
+        Args:
+            pcd1: tensor, (batch_size, pcd_points_num, 3)
+            pcd2: tensor, (batch_size, pcd_points_num, 3)
+            query_points: tensor, (batch_size*query_points_num, 3)
+        Returns:
+            udf1_pred: tensor, (batch_size, query_points_num)
+            udf2_pred: tensor, (batch_size, query_points_num)
+        """
+        pcd1 = pcd1.transpose(1, 2).contiguous()
+        pcd2 = pcd2.transpose(1, 2).contiguous()
+        latentcode1 = self.encoder1(pcd1).squeeze(-1)
+        latentcode1 = latentcode1.repeat_interleave(50000, dim=0)
+        latentcode2 = self.encoder2(pcd2).squeeze(-1)
+        latentcode2 = latentcode2.repeat_interleave(50000, dim=0)
 
-        latent = torch.cat([latent_obj1, latent_obj2], 1)
+        latentcode = torch.cat([latentcode1, latentcode2, query_points], 1)
 
-        decoder_inputs = torch.cat([latent, xyz], 1)
-        udf_obj1, udf_obj2 = self.decoder(decoder_inputs)
-        return udf_obj1, udf_obj2
+        udf1_pred, udf2_pred = self.decoder(latentcode)
+
+        return udf1_pred, udf2_pred

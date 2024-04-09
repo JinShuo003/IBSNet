@@ -302,7 +302,7 @@ def visualize(specs, filename):
 
 if __name__ == '__main__':
     # 获取配置参数
-    config_filepath = 'configs/visualization.json'
+    config_filepath = 'configs/geometry_visualize_utils.json'
     specs = path_utils.read_config(config_filepath)
     filename_tree_dir = specs.get("path_options").get("filename_tree_dir")
     filename_tree = path_utils.get_filename_tree(specs,

@@ -1,7 +1,7 @@
 import sys
 import os
 
-sys.path.insert(0, "/home/data/jinshuo/IBPCDC")
+sys.path.insert(0, "/home/data/jinshuo/IBS_Net")
 
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
@@ -18,12 +18,15 @@ from utils import log_utils, path_utils, geometry_utils, random_utils
 from dataset import dataset_udfSamples
 
 
-def get_aabb(specs: dict, filename: str, aabb_dir: str=r"D:\dataset\IBSNet\trainData\boundingBox"):
+def get_aabb(specs: dict, filename: str, aabb_dir: str=r"data/boundingBox"):
     category_patten = specs.get("CategoryPatten")
     scene_patten = specs.get("ScenePatten")
-    category = re.match(category_patten, filename)
-    scene = re.match(scene_patten, filename)
-    aabb = geometry_utils.read_mesh(os.path.join(aabb_dir, category, scene)).get_axis_aligned_bounding_box()
+    aabb_scale = specs.get("ReconstructOptions").get("AABBScale")
+    category = re.match(category_patten, filename).group()
+    scene = re.match(scene_patten, filename).group()
+    filename = "{}.obj".format(scene)
+    aabb = geometry_utils.read_mesh(os.path.join(aabb_dir, category, filename)).get_axis_aligned_bounding_box()
+    aabb.scale(aabb_scale, aabb.get_center())
 
     return aabb
 
@@ -44,12 +47,30 @@ def get_points_on_ibs(model: torch.nn.Module, pcd1: torch.Tensor, pcd2: torch.Te
     :return: points: np.ndarray, points in query_points which is on ibs
     """
     assert pcd1.device == pcd2.device == query_points.device
-    udf1, udf2 = model(pcd1, pcd2, query_points)
-    udf1_np = udf1.detach().numpy()
-    udf2_np = udf2.detach().numpy()
-    points = [query_point for i, query_point in enumerate(query_points) if abs(udf1_np[i] - udf2_np[i]) < threshold]
+    sample_points_num = query_points.shape[0]
+    udf1, udf2 = model(pcd1, pcd2, query_points, sample_points_num)
+    udf1_np = udf1.detach().cpu().numpy()
+    udf2_np = udf2.detach().cpu().numpy()
+    points = [query_point.detach().cpu().numpy() for i, query_point in enumerate(query_points) if abs(udf1_np[i] - udf2_np[i]) < threshold]
 
-    return np.array(points, dtype=np.float32)
+    return np.array(points, dtype=np.float32).reshape(-1, 3)
+
+
+def get_seed_points(specs: dict, filename: str, model: torch.nn.Module, pcd1: torch.Tensor, pcd2: torch.Tensor, threshold: float):
+    device = specs.get("Device")
+    seed_num = specs.get("ReconstructOptions").get("SeedPointNum")
+
+    _, _, filename = filename.split('/')
+    aabb = get_aabb(specs, filename)
+    seed_points = np.zeros((0, 3))
+
+    while seed_points.shape[0] < seed_num:
+        query_points = random_utils.get_random_points_in_aabb(aabb, seed_num)
+        query_points = torch.from_numpy(np.array(query_points, dtype=np.float32)).to(device)
+        points_on_ibs = get_points_on_ibs(model, pcd1, pcd2, query_points, threshold)
+        seed_points = np.concatenate((seed_points, points_on_ibs), axis=0)
+
+    return seed_points
 
 
 def reconstruct_ibs(specs: dict, filename: str, model: torch.nn.Module, pcd1: torch.Tensor, pcd2: torch.Tensor, threshold: float):
@@ -62,44 +83,45 @@ def reconstruct_ibs(specs: dict, filename: str, model: torch.nn.Module, pcd1: to
     :param threshold: when |udf1-udf2| < threhold, it is on ibs
     :return: ibs_pcd: o3d.geometry.PointCloud
     """
-    aabb = get_aabb(specs, filename)
-    point_num = specs.get("ReconstructOptions").get("ReconstructPointNum")
-    seed_num = specs.get("ReconstructOptions").get("SeedPointNum")
+    device = specs.get("Device")
+    pcd1 = pcd1.unsqueeze(0).to(device)
+    pcd2 = pcd2.unsqueeze(0).to(device)
 
-    # 先在aabb内采点，然后保留符合条件的点作为初始值
-    query_points = random_utils.get_random_points_in_aabb(aabb, 50000)
-    query_points = torch.from_numpy(np.array(query_points, dtype=np.float32))
-    points = get_points_on_ibs(model, pcd1, pcd2, query_points, threshold)
-    while len(points) < point_num:
-        rate = 50000 / len(points) + 1
-        query_points = random_utils.get_random_points_from_seeds(points, rate, 0.01)
-        query_points = query_points[0:50000, :]
-        query_points = torch.from_numpy(np.array(query_points, dtype=np.float32))
+    point_num = specs.get("ReconstructOptions").get("ReconstructPointNum")
+    diffuse_num = specs.get("ReconstructOptions").get("DiffuseNum")
+    diffuse_radius = specs.get("ReconstructOptions").get("DiffuseRadius")
+
+    # 先采集一定数量的种子点，需要保证足够密集
+    seed_points = get_seed_points(specs, filename, model, pcd1, pcd2, threshold)
+    points = seed_points
+
+    while points.shape[0] < point_num:
+        logger.info("current points number: {}, target: {}".format(points.shape[0], point_num))
+        query_points = random_utils.get_random_points_from_seeds(points, diffuse_num, diffuse_radius)
+        query_points = np.array(query_points, dtype=np.float32)
+        query_points = torch.from_numpy(query_points).to(device)
         points_ = get_points_on_ibs(model, pcd1, pcd2, query_points, threshold)
         points = np.concatenate((points, points_), axis=0)
 
     ibs_pcd = o3d.geometry.PointCloud()
-    ibs_pcd.points = points
+    ibs_pcd.points = o3d.utility.Vector3dVector(points)
     ibs_pcd.farthest_point_down_sample(point_num)
 
-    return ibs_pcd
+    save_result(specs, filename, ibs_pcd)
 
 
 def test(model, test_dataloader, specs):
-    ibs_threshold = specs.get("IBSThreshold")
+    ibs_threshold = specs.get("ReconstructOptions").get("IBSThreshold")
     model.eval()
     with torch.no_grad():
         for data in test_dataloader:
             pcd1, pcd2, udf_data, indices = data
-            filename_list = [test_dataloader.dataset.pcd_partial_filenames[i] for i in indices]
+            filename_list = [test_dataloader.dataset.pcd1files[i] for i in indices]
 
-            ibs_pcd_list = []
-            for i, filename in filename_list:
-                ibs_pcd = reconstruct_ibs(specs, filename, model, pcd1[i], pcd2[i], ibs_threshold)
-                ibs_pcd_list.append(ibs_pcd)
-
-            save_result(specs, filename_list, ibs_pcd_list)
-            logger.info("saved {} ibs".format(filename_list.shape[0]))
+            for i, filename in enumerate(filename_list):
+                logger.info("filename: {}".format(filename))
+                reconstruct_ibs(specs, filename, model, pcd1[i], pcd2[i], ibs_threshold)
+                logger.info("filename: {}, success\n".format(filename))
 
 
 def main_function(specs):
@@ -109,7 +131,7 @@ def main_function(specs):
     logger.info("test device: {}".format(device))
     logger.info("batch size: {}".format(specs.get("BatchSize")))
 
-    test_dataloader = get_dataloader(dataset_udfSamples.UDFSamples, specs)
+    test_dataloader = get_dataloader(dataset_udfSamples.UDFSamples, specs, shuffle=False)
     logger.info("init dataloader succeed")
 
     checkpoint = torch.load(model_path, map_location="cuda:{}".format(device))

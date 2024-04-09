@@ -24,7 +24,7 @@ def get_network(specs, model_class, checkpoint, **kwargs):
     return network
 
 
-def get_dataloader(dataset_class, specs: dict):
+def get_dataloader(dataset_class, specs: dict, shuffle: bool=True):
     data_source = specs.get("DataSource")
     test_split_file = specs.get("TestSplit")
     batch_size = specs.get("BatchSize")
@@ -42,7 +42,7 @@ def get_dataloader(dataset_class, specs: dict):
     test_dataloader = data_utils.DataLoader(
         test_dataset,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=shuffle,
         num_workers=num_data_loader_threads,
         drop_last=False,
     )
@@ -51,35 +51,32 @@ def get_dataloader(dataset_class, specs: dict):
     return test_dataloader
 
 
-def save_result(specs: dict, filename_list: list, ibs_pcd_list: list):
+def save_result(specs: dict, filename: str, ibs_pcd: o3d.geometry.PointCloud):
     save_dir = specs.get("ResultSaveDir")
     tag = specs.get("TAG")
 
     filename_patten = specs.get("FileNamePatten")
 
-    for index, filename_abs in enumerate(filename_list):
-        # [dataset, category, filename], example:[MVP, scene1, scene1.1000_view0_0.ply]
-        _, category, filename = filename_abs.split('/')
-        filename = re.match(filename_patten, filename).group()  # scene1.1000_view0
+    # [dataset, category, filename], example:[MVP, scene1, scene1.1000_view0_0.ply]
+    _, category, filename = filename.split('/')
+    filename = re.match(filename_patten, filename).group()  # scene1.1000_view0
 
-        # the real directory is save_dir/tag/category
-        save_path = os.path.join(save_dir, tag, category)
-        if not os.path.isdir(save_path):
-            os.makedirs(save_path)
+    save_path = os.path.join(save_dir, tag, category)
+    if not os.path.isdir(save_path):
+        os.makedirs(save_path)
 
-        filename_final = "{}.ply".format(filename)
-        absolute_path = os.path.join(save_path, filename_final)
-        ibs_pcd = ibs_pcd_list[index]
+    filename_final = "{}.ply".format(filename)
+    absolute_path = os.path.join(save_path, filename_final)
 
-        o3d.io.write_point_cloud(absolute_path, ibs_pcd)
+    o3d.io.write_point_cloud(absolute_path, ibs_pcd)
 
 
 def create_zip(specs: dict):
     test_result_save_dir = specs.get("ResultSaveDir")
     tag = specs.get("TAG")
     dataset = specs.get("Dataset")
-    zip_file_base_name = os.path.join(test_result_save_dir, tag, tag)
-    zip_dir = os.path.join(test_result_save_dir, tag, dataset)
+    zip_file_base_name = os.path.join(test_result_save_dir, tag)
+    zip_dir = os.path.join(test_result_save_dir, tag)
     shutil.make_archive(zip_file_base_name, 'zip', zip_dir)
 
 

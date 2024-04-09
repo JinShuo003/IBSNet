@@ -245,7 +245,7 @@ class IBSNet(nn.Module):
         self.decoder = DeepSDF_Decoder()
         self.num_samp_per_scene = 50000
 
-    def forward(self, pcd1, pcd2, query_points):
+    def forward(self, pcd1, pcd2, query_points, sample_points_num):
         """
         Args:
             pcd1: tensor, (batch_size, pcd_points_num, 3)
@@ -255,12 +255,10 @@ class IBSNet(nn.Module):
             udf1_pred: tensor, (batch_size, query_points_num)
             udf2_pred: tensor, (batch_size, query_points_num)
         """
-        # pcd1 = pcd1.transpose(1, 2).contiguous()
-        # pcd2 = pcd2.transpose(1, 2).contiguous()
         latentcode1 = self.encoder1(pcd1).squeeze(-1)
         latentcode2 = self.encoder2(pcd2).squeeze(-1)
-        latentcode1 = latentcode1.repeat_interleave(50000, dim=0)
-        latentcode2 = latentcode2.repeat_interleave(50000, dim=0)
+        latentcode1 = latentcode1.repeat_interleave(sample_points_num, dim=0)
+        latentcode2 = latentcode2.repeat_interleave(sample_points_num, dim=0)
 
         latentcode = torch.cat([latentcode1, latentcode2, query_points], 1)
 

@@ -156,14 +156,14 @@ class IBSNet(nn.Module):
     def __init__(self, points_num=2048, latent_size=256):
         super().__init__()
 
-        self.encoder1 = PN2_Transformer_Encoder_new(points_num=points_num, latent_size=latent_size)
-        self.encoder2 = PN2_Transformer_Encoder_new(points_num=points_num, latent_size=latent_size)
+        self.encoder1 = PN2_Transformer_Encoder(points_num=points_num, latent_size=latent_size)
+        self.encoder2 = PN2_Transformer_Encoder(points_num=points_num, latent_size=latent_size)
 
         self.decoder = IM_Decoder(2 * latent_size + 3)
 
         num_params = sum(p.data.nelement() for p in self.parameters())
 
-    def forward(self, pcd1, pcd2, query_points):
+    def forward(self, pcd1, pcd2, query_points, sample_points_num):
         """
         Args:
             pcd1: tensor, (batch_size, pcd_points_num, 3)
@@ -174,9 +174,9 @@ class IBSNet(nn.Module):
             ufd2_pred: tensor, (batch_size, query_points_num)
         """
         latentcode1 = self.encoder1(pcd1)
-        latentcode1 = latentcode1.repeat_interleave(50000, dim=0)
         latentcode2 = self.encoder2(pcd2)
-        latentcode2 = latentcode2.repeat_interleave(50000, dim=0)
+        latentcode2 = latentcode2.repeat_interleave(sample_points_num, dim=0)
+        latentcode1 = latentcode1.repeat_interleave(sample_points_num, dim=0)
 
         latentcode = torch.cat([latentcode1, latentcode2, query_points], 1)
 

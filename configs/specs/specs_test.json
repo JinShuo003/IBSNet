@@ -1,22 +1,25 @@
 {
-  "TAG": "IBSNet_transformerEncoder_IMDecoder",
+  "TAG": "IBSNet_transformer_IM_lr5e4_l2",
   "DataSource": "data",
   "TestSplit": "dataset/test/test.json",
-  "ModelPath": "",
+  "ModelPath": "model_paras/IBSNet_transformer_IM_lr5e4_l2/epoch_30.pth",
   "CategoryPatten": "scene\\d+",
   "ScenePatten": "scene\\d+.\\d+",
   "FileNamePatten": "scene\\d.\\d{4}_view\\d+",
   "ResultSaveDir": "test_result",
   "Device": 0,
-  "BatchSize": 128,
+  "BatchSize": 8,
   "DataLoaderThreads": 8,
   "ReconstructOptions": {
-    "ReconstructPointsNum": 16384,
-    "SeedPointNum": 20000,
-    "IBSThreshold": 0.01
+    "ReconstructPointNum": 16384,
+    "SeedPointNum": 2000,
+    "DiffuseNum": 5,
+    "DiffuseRadius": 0.03,
+    "IBSThreshold": 0.005,
+    "AABBScale": 1.5
   },
   "LogOptions": {
-    "TAG": "IBSNet_transformerEncoder_IMDecoder",
+    "TAG": "IBSNet_transformer_IM_lr5e4_l2",
     "Type": "test",
     "LogDir": "logs",
     "GlobalLevel": "INFO",

@@ -25,15 +25,11 @@ def get_network(specs, model_class, checkpoint, **kwargs):
 
 
 def save_result(specs: dict, filename: str, ibs_pcd: o3d.geometry.PointCloud):
-    save_dir = specs.get("ResultSaveDir")
+    save_dir = specs.get("path_options").get("reconstruct_result_save_dir")
     tag = specs.get("TAG")
 
-    filename_patten = specs.get("FileNamePatten")
-
-    # [dataset, category, filename], example:[MVP, scene1, scene1.1000_view0_0.ply]
-    _, category, filename = filename.split('/')
-    filename = re.match(filename_patten, filename).group()  # scene1.1000_view0
-
+    category_re = specs.get("path_options").get("format_info").get("category_re")
+    category = re.match(category_re, filename).group()
     save_path = os.path.join(save_dir, tag, category)
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
@@ -45,7 +41,7 @@ def save_result(specs: dict, filename: str, ibs_pcd: o3d.geometry.PointCloud):
 
 
 def create_zip(specs: dict):
-    reconstruct_result_save_dir = specs.get("reconstruct_result_save_dir")
+    reconstruct_result_save_dir = specs.get("path_options").get("reconstruct_result_save_dir")
     tag = specs.get("TAG")
     zip_file_base_name = os.path.join(reconstruct_result_save_dir, tag)
     zip_dir = os.path.join(reconstruct_result_save_dir, tag)

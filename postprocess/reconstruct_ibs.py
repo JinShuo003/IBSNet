@@ -19,11 +19,12 @@ from dataset import dataset_udfSamples
 
 
 def get_aabb(specs: dict, filename: str, aabb_dir: str=r"data/boundingBox"):
-    category_patten = specs.get("CategoryPatten")
-    scene_patten = specs.get("ScenePatten")
+    category_re = specs.get("path_options").get("format_info").get("category_re")
+    scene_re = specs.get("path_options").get("format_info").get("scene_re")
     aabb_scale = specs.get("ReconstructOptions").get("AABBScale")
-    category = re.match(category_patten, filename).group()
-    scene = re.match(scene_patten, filename).group()
+
+    category = re.match(category_re, filename).group()
+    scene = re.match(scene_re, filename).group()
     filename = "{}.obj".format(scene)
     aabb = geometry_utils.read_mesh(os.path.join(aabb_dir, category, filename)).get_axis_aligned_bounding_box()
     aabb.scale(aabb_scale, aabb.get_center())
@@ -60,16 +61,22 @@ def get_seed_points(specs: dict, filename: str, model: torch.nn.Module, pcd1: to
     device = specs.get("Device")
     seed_num = specs.get("ReconstructOptions").get("SeedPointNum")
 
-    _, _, filename = filename.split('/')
     aabb = get_aabb(specs, filename)
     seed_points = np.zeros((0, 3))
 
-    while seed_points.shape[0] < seed_num:
+    iterate_time_max = 100
+    iterate_time = 0
+    while seed_points.shape[0] < seed_num and iterate_time < iterate_time_max:
+        logger.debug("iterate {} when generate seeds, seed number: {}".format(iterate_time, seed_points.shape[0]))
         query_points = random_utils.get_random_points_in_aabb(aabb, seed_num)
         query_points = torch.from_numpy(np.array(query_points, dtype=np.float32)).to(device)
         points_on_ibs = get_points_on_ibs(model, pcd1, pcd2, query_points, threshold)
         seed_points = np.concatenate((seed_points, points_on_ibs), axis=0)
+        iterate_time += 1
 
+    if iterate_time >= iterate_time_max:
+        return None
+    
     return seed_points
 
 
@@ -77,7 +84,7 @@ def get_pcd_torch(specs: dict, filename: str):
     device = specs.get("Device")
     pcd_dir = specs.get("path_options").get("geometries_dir").get("pcd_dir")
     category_re = specs.get("path_options").get("format_info").get("category_re")
-    category = re.match(category_re, filename)
+    category = re.match(category_re, filename).group()
 
     pcd_path = os.path.join(pcd_dir, category)
 
@@ -115,10 +122,15 @@ def reconstruct_ibs(specs: dict, filename: str, model: torch.nn.Module):
 
     # generate seed points
     seed_points = get_seed_points(specs, filename, model, pcd1, pcd2, threshold)
+    if seed_points is None:
+        logger.warning("generate seed points failed")
+        return
+    
+    logger.info("got seeds, number: {}".format(seed_points.shape[0]))
     points = seed_points
 
     while points.shape[0] < point_num:
-        logger.info("current points number: {}, target: {}".format(points.shape[0], point_num))
+        logger.debug("current points number: {}, target: {}".format(points.shape[0], point_num))
         query_points = random_utils.get_random_points_from_seeds(points, diffuse_num, diffuse_radius)
         query_points = np.array(query_points, dtype=np.float32)
         query_points = torch.from_numpy(query_points).to(device)
@@ -155,9 +167,9 @@ def get_filename_list(specs):
 
 
 if __name__ == '__main__':
-    config_filepath = 'configs/reconstruct_ibs.json'
+    config_filepath = 'postprocess/configs/reconstruct_ibs.json'
     specs = path_utils.read_config(config_filepath)
-    path_utils.generate_path(specs.get("path_options").get("ibs_mesh_save_dir"))
+    path_utils.generate_path(specs.get("path_options").get("reconstruct_result_save_dir"))
 
     logger = logging.getLogger("reconstruct ibs")
     logger.setLevel("INFO")
@@ -167,7 +179,7 @@ if __name__ == '__main__':
 
     # get pretrained model
     device = specs.get("Device")
-    model_path = specs.get("ModelPath")
+    model_path = specs.get("path_options").get("model_path")
     checkpoint = torch.load(model_path, map_location="cuda:{}".format(device))
     model = get_network(specs, IBSNet, checkpoint)
 

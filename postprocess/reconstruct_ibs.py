@@ -1,16 +1,16 @@
-import sys
 import os
+import re
+import sys
+
+import numpy as np
 
 sys.path.insert(0, "/home/data/jinshuo/IBS_Net")
 
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
-import argparse
 import time
 import torch
-from datetime import datetime, timedelta
-import open3d as o3d
-import numpy as np
+import logging
 
 from models.models_transformer import IBSNet
 from utils.test_utils import *
@@ -73,25 +73,47 @@ def get_seed_points(specs: dict, filename: str, model: torch.nn.Module, pcd1: to
     return seed_points
 
 
-def reconstruct_ibs(specs: dict, filename: str, model: torch.nn.Module, pcd1: torch.Tensor, pcd2: torch.Tensor, threshold: float):
+def get_pcd_torch(specs: dict, filename: str):
+    device = specs.get("Device")
+    pcd_dir = specs.get("path_options").get("geometries_dir").get("pcd_dir")
+    category_re = specs.get("path_options").get("format_info").get("category_re")
+    category = re.match(category_re, filename)
+
+    pcd_path = os.path.join(pcd_dir, category)
+
+    pcd1_filename = "{}_0.ply".format(filename)
+    pcd2_filename = "{}_1.ply".format(filename)
+
+    pcd1_path = os.path.join(pcd_path, pcd1_filename)
+    pcd2_path = os.path.join(pcd_path, pcd2_filename)
+
+    pcd1 = geometry_utils.read_point_cloud(pcd1_path)
+    pcd2 = geometry_utils.read_point_cloud(pcd2_path)
+
+    pcd1_torch = torch.from_numpy(np.array(pcd1.points, dtype=np.float32)).to(device)
+    pcd2_torch = torch.from_numpy(np.array(pcd2.points, dtype=np.float32)).to(device)
+
+    return pcd1_torch, pcd2_torch
+
+
+def reconstruct_ibs(specs: dict, filename: str, model: torch.nn.Module):
     """
     :param specs: specification
     :param filename: filename
     :param model: pretrained model
-    :param pcd1: point cloud 1
-    :param pcd2: point cloud 2
-    :param threshold: when |udf1-udf2| < threhold, it is on ibs
     :return: ibs_pcd: o3d.geometry.PointCloud
     """
     device = specs.get("Device")
-    pcd1 = pcd1.unsqueeze(0).to(device)
-    pcd2 = pcd2.unsqueeze(0).to(device)
+    threshold = specs.get("ReconstructOptions").get("IBSThreshold")
+    pcd1, pcd2 = get_pcd_torch(specs, filename)
+    pcd1 = pcd1.unsqueeze(0)
+    pcd2 = pcd2.unsqueeze(0)
 
     point_num = specs.get("ReconstructOptions").get("ReconstructPointNum")
     diffuse_num = specs.get("ReconstructOptions").get("DiffuseNum")
     diffuse_radius = specs.get("ReconstructOptions").get("DiffuseRadius")
 
-    # 先采集一定数量的种子点，需要保证足够密集
+    # generate seed points
     seed_points = get_seed_points(specs, filename, model, pcd1, pcd2, threshold)
     points = seed_points
 
@@ -110,65 +132,47 @@ def reconstruct_ibs(specs: dict, filename: str, model: torch.nn.Module, pcd1: to
     save_result(specs, filename, ibs_pcd)
 
 
-def test(model, test_dataloader, specs):
-    ibs_threshold = specs.get("ReconstructOptions").get("IBSThreshold")
-    model.eval()
-    with torch.no_grad():
-        for data in test_dataloader:
-            pcd1, pcd2, udf_data, indices = data
-            filename_list = [test_dataloader.dataset.pcd1files[i] for i in indices]
+if __name__ == '__main__':
+    config_filepath = 'configs/reconstruct_ibs.json'
+    specs = path_utils.read_config(config_filepath)
+    path_utils.generate_path(specs.get("path_options").get("ibs_mesh_save_dir"))
 
-            for i, filename in enumerate(filename_list):
-                logger.info("filename: {}".format(filename))
-                reconstruct_ibs(specs, filename, model, pcd1[i], pcd2[i], ibs_threshold)
-                logger.info("filename: {}, success\n".format(filename))
+    logger = logging.getLogger("reconstruct ibs")
+    logger.setLevel("INFO")
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(level=logging.INFO)
+    logger.addHandler(stream_handler)
 
-
-def main_function(specs):
+    # get pretrained model
     device = specs.get("Device")
     model_path = specs.get("ModelPath")
-    logger = log_utils.LogFactory.get_logger(specs.get("LogOptions"))
-    logger.info("test device: {}".format(device))
-    logger.info("batch size: {}".format(specs.get("BatchSize")))
-
-    test_dataloader = get_dataloader(dataset_udfSamples.UDFSamples, specs, shuffle=False)
-    logger.info("init dataloader succeed")
-
     checkpoint = torch.load(model_path, map_location="cuda:{}".format(device))
     model = get_network(specs, IBSNet, checkpoint)
-    logger.info("load trained model succeed, epoch: {}".format(checkpoint["epoch"]))
 
+    # get instance name
+    test_split_file_path = specs.get("path_options").get("test_split_file_path")
+    view_list = []
+
+    with open(test_split_file_path, "r") as f:
+        split_file = json.load(f)
+        for dataset in split_file:
+            for class_name in split_file[dataset]:
+                for instance_name in split_file[dataset][class_name]:
+                    view_list.append(instance_name)
+
+    # reconstruct
     time_begin_test = time.time()
-    test(model, test_dataloader, specs)
+    for filename in view_list:
+        logger.info("current scene: {}".format(filename))
+        _logger, file_handler, stream_handler = log_utils.get_logger(specs.get("path_options").get("log_dir"), filename)
+        reconstruct_ibs(specs, filename, model)
+        _logger.removeHandler(file_handler)
+        _logger.removeHandler(stream_handler)
     time_end_test = time.time()
     logger.info("use {} to test".format(time_end_test - time_begin_test))
 
+    # zip
     time_begin_zip = time.time()
     create_zip(specs)
     time_end_zip = time.time()
     logger.info("use {} to zip".format(time_end_zip - time_begin_zip))
-
-
-if __name__ == '__main__':
-    arg_parser = argparse.ArgumentParser(description="")
-    arg_parser.add_argument(
-        "--experiment",
-        "-e",
-        dest="experiment_config_file",
-        default="configs/specs/specs_test.json",
-        required=False,
-        help="The experiment config file."
-    )
-    args = arg_parser.parse_args()
-
-    specs = path_utils.read_config(args.experiment_config_file)
-    logger = log_utils.LogFactory.get_logger(specs.get("LogOptions"))
-
-    TIMESTAMP = "{0:%Y-%m-%d_%H-%M-%S/}".format(datetime.now() + timedelta(hours=8))
-    logger.info("current time: {}".format(TIMESTAMP))
-    logger.info("test split: {}".format(specs.get("TestSplit")))
-    logger.info("specs file: {}".format(args.experiment_config_file))
-    logger.info("specs file: \n{}".format(json.dumps(specs, sort_keys=False, indent=4)))
-    logger.info("model: {}".format(specs.get("ModelPath")))
-
-    main_function(specs)

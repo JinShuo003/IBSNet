@@ -13,7 +13,7 @@ import torch
 import logging
 
 from models.models_transformer import IBSNet
-from utils.test_utils import *
+from utils.reconstruct_utils import *
 from utils import log_utils, path_utils, geometry_utils, random_utils
 from dataset import dataset_udfSamples
 
@@ -132,6 +132,28 @@ def reconstruct_ibs(specs: dict, filename: str, model: torch.nn.Module):
     save_result(specs, filename, ibs_pcd)
 
 
+def get_filename_list(specs):
+    test_split_file_path = specs.get("path_options").get("test_split_file_path")
+    handle_category = specs.get("path_options").get("format_info").get("handle_category")
+    handle_scene = specs.get("path_options").get("format_info").get("handle_scene")
+    handle_filename = specs.get("path_options").get("format_info").get("handle_filename")
+    filename_list = []
+
+    with open(test_split_file_path, "r") as f:
+        split_file = json.load(f)
+        for dataset in split_file:
+            for category in split_file[dataset]:
+                if re.match(handle_category, category) is None:
+                    continue
+                for filename in split_file[dataset][category]:
+                    if re.match(handle_scene, filename) is None:
+                        continue
+                    if re.match(handle_filename, filename) is None:
+                        continue
+                    filename_list.append(filename)
+    return filename_list
+
+
 if __name__ == '__main__':
     config_filepath = 'configs/reconstruct_ibs.json'
     specs = path_utils.read_config(config_filepath)
@@ -150,19 +172,11 @@ if __name__ == '__main__':
     model = get_network(specs, IBSNet, checkpoint)
 
     # get instance name
-    test_split_file_path = specs.get("path_options").get("test_split_file_path")
-    view_list = []
-
-    with open(test_split_file_path, "r") as f:
-        split_file = json.load(f)
-        for dataset in split_file:
-            for class_name in split_file[dataset]:
-                for instance_name in split_file[dataset][class_name]:
-                    view_list.append(instance_name)
+    filename_list = get_filename_list(specs)
 
     # reconstruct
     time_begin_test = time.time()
-    for filename in view_list:
+    for filename in filename_list:
         logger.info("current scene: {}".format(filename))
         _logger, file_handler, stream_handler = log_utils.get_logger(specs.get("path_options").get("log_dir"), filename)
         reconstruct_ibs(specs, filename, model)

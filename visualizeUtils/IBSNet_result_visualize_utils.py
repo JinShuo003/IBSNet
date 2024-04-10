@@ -15,13 +15,9 @@ class App:
     def __init__(self, specs):
         self.specs = specs
         self.filename_tree = None
-        self.obj1_path = None
-        self.obj2_path = None
-        self.mesh1 = None
-        self.mesh2 = None
 
-        self.key_mesh_1 = "mesh_1"
-        self.key_mesh_2 = "mesh_gt_2"
+        self.key_pcd_complete_1 = "pcd_complete_1"
+        self.key_pcd_complete_2 = "pcd_complete_2"
         self.key_pcd_partial_1 = "pcd_partial_1"
         self.key_pcd_partial_2 = "pcd_partial_2"
         self.key_ibs_gt = "ibs_gt"
@@ -29,8 +25,8 @@ class App:
         self.key_ibs_grasping_field = "ibs_grasping_field"
         self.key_ibs_IBSNet = "ibs_IBSNet"
 
-        self.TAG_obj1 = "pcd1"
-        self.TAG_obj2 = "pcd2"
+        self.TAG_obj1 = "obj1"
+        self.TAG_obj2 = "obj2"
         self.TAG_IBS = "IBS"
 
         self.obj_material = rendering.MaterialRecord()
@@ -91,8 +87,8 @@ class App:
         self.flag_IBSNet_window_show = True
 
         # 几何体
-        self.mesh_gt_1 = None
-        self.mesh_gt_2 = None
+        self.pcd_complete_1 = None
+        self.pcd_complete_2 = None
         self.ibs_gt = None
         self.pcd_partial_1 = None
         self.pcd_partial_2 = None
@@ -308,8 +304,8 @@ class App:
             return
 
         geometry_path_dict = self.get_geometry_path()
-        self.mesh_gt_1 = self.read_mesh(geometry_path_dict.get(self.key_mesh_1))
-        self.mesh_gt_2 = self.read_mesh(geometry_path_dict.get(self.key_mesh_2))
+        self.pcd_complete_1 = self.read_pcd(geometry_path_dict.get(self.key_pcd_complete_1))
+        self.pcd_complete_2 = self.read_pcd(geometry_path_dict.get(self.key_pcd_complete_2))
         self.pcd_partial_1 = self.read_pcd(geometry_path_dict.get(self.key_pcd_partial_1))
         self.pcd_partial_2 = self.read_pcd(geometry_path_dict.get(self.key_pcd_partial_2))
         self.ibs_gt = self.read_pcd(geometry_path_dict.get(self.key_ibs_gt))
@@ -317,8 +313,8 @@ class App:
         self.ibs_grasping_field = self.read_pcd(geometry_path_dict.get(self.key_ibs_grasping_field))
         self.ibs_IBSNet = self.read_pcd(geometry_path_dict.get(self.key_ibs_IBSNet))
 
-        self.paint_color(self.mesh_gt_1, (0.7, 0.2, 0.2))
-        self.paint_color(self.mesh_gt_2, (0.2, 0.7, 0.2))
+        self.paint_color(self.pcd_complete_1, (0.7, 0.2, 0.2))
+        self.paint_color(self.pcd_complete_2, (0.2, 0.7, 0.2))
         self.paint_color(self.pcd_partial_1, (0.7, 0.2, 0.2))
         self.paint_color(self.pcd_partial_2, (0.2, 0.7, 0.2))
         self.paint_color(self.ibs_gt, (0.2, 0.2, 0.7))
@@ -328,12 +324,12 @@ class App:
 
         self.clear_all_window()
         if self.show_obj1_checked:
-            self.add_object(self.scene_gt, self.TAG_obj1, self.mesh_gt_1)
+            self.add_object(self.scene_gt, self.TAG_obj1, self.pcd_complete_1)
             self.add_object(self.scene_geometric, self.TAG_obj1, self.pcd_partial_1)
             self.add_object(self.scene_grasping_field, self.TAG_obj1, self.pcd_partial_1)
             self.add_object(self.scene_IBSNet, self.TAG_obj1, self.pcd_partial_1)
         if self.show_obj2_checked:
-            self.add_object(self.scene_gt, self.TAG_obj2, self.mesh_gt_2)
+            self.add_object(self.scene_gt, self.TAG_obj2, self.pcd_complete_2)
             self.add_object(self.scene_geometric, self.TAG_obj2, self.pcd_partial_2)
             self.add_object(self.scene_grasping_field, self.TAG_obj2, self.pcd_partial_2)
             self.add_object(self.scene_IBSNet, self.TAG_obj2, self.pcd_partial_2)
@@ -424,7 +420,7 @@ class App:
         print("show pcd1 checked: ", is_checked)
         self.show_obj1_checked = is_checked
         if is_checked:
-            self.add_object(self.scene_gt, self.TAG_obj1, self.mesh_gt_1)
+            self.add_object(self.scene_gt, self.TAG_obj1, self.pcd_complete_1)
             self.add_object(self.scene_geometric, self.TAG_obj1, self.pcd_partial_1)
             self.add_object(self.scene_grasping_field, self.TAG_obj1, self.pcd_partial_1)
             self.add_object(self.scene_IBSNet, self.TAG_obj1, self.pcd_partial_1)
@@ -438,7 +434,7 @@ class App:
         print("show pcd2checked: ", is_checked)
         self.show_obj2_checked = is_checked
         if is_checked:
-            self.add_object(self.scene_gt, self.TAG_obj2, self.mesh_gt_2)
+            self.add_object(self.scene_gt, self.TAG_obj2, self.pcd_complete_2)
             self.add_object(self.scene_geometric, self.TAG_obj2, self.pcd_partial_2)
             self.add_object(self.scene_grasping_field, self.TAG_obj2, self.pcd_partial_2)
             self.add_object(self.scene_IBSNet, self.TAG_obj2, self.pcd_partial_2)
@@ -766,7 +762,7 @@ class App:
         self.data_info_layout.add_child(self.btn_copy_cur_data_info)
 
     def get_geometry_path(self):
-        mesh_dir = self.specs.get("path_options").get("geometries_dir").get("mesh_dir")
+        pcd_complete_dir = self.specs.get("path_options").get("geometries_dir").get("pcd_complete_dir")
         pcd_partial_dir = self.specs.get("path_options").get("geometries_dir").get("pcd_partial_dir")
         ibs_gt_dir = self.specs.get("path_options").get("geometries_dir").get("ibs_gt_dir")
         ibs_geometric_dir = self.specs.get("path_options").get("geometries_dir").get("ibs_geometric_dir")
@@ -777,15 +773,15 @@ class App:
         scene = self.scene_selector.get_item(self.selected_scene)
         view = self.view_selector.get_item(self.selected_view)
 
-        mesh_1_filename = "{}_0.obj".format(scene)
-        mesh_2_filename = "{}_1.obj".format(scene)
+        pcd_complete_1_filename = "{}_0.ply".format(scene)
+        pcd_complete_2_filename = "{}_1.ply".format(scene)
         pcd_partial_1_filename = "{}_0.ply".format(view)
         pcd_partial_2_filename = "{}_1.ply".format(view)
         ibs_gt_filename = "{}.ply".format(scene)
         ibs_filename = "{}.ply".format(view)
 
-        mesh_1_path = os.path.join(mesh_dir, category, mesh_1_filename)
-        mesh_2_path = os.path.join(mesh_dir, category, mesh_2_filename)
+        pcd_complete_1_path = os.path.join(pcd_complete_dir, category, pcd_complete_1_filename)
+        pcd_complete_2_path = os.path.join(pcd_complete_dir, category, pcd_complete_2_filename)
         pcd_partial_1_path = os.path.join(pcd_partial_dir, category, pcd_partial_1_filename)
         pcd_partial_2_path = os.path.join(pcd_partial_dir, category, pcd_partial_2_filename)
         ibs_gt_path = os.path.join(ibs_gt_dir, category, ibs_gt_filename)
@@ -794,8 +790,8 @@ class App:
         ibs_IBSNet_path = os.path.join(ibs_IBSNet_dir, category, ibs_filename)
 
         geometry_path_dict = {
-            self.key_mesh_1: mesh_1_path,
-            self.key_mesh_2: mesh_2_path,
+            self.key_pcd_complete_1: pcd_complete_1_path,
+            self.key_pcd_complete_2: pcd_complete_2_path,
             self.key_pcd_partial_1: pcd_partial_1_path,
             self.key_pcd_partial_2: pcd_partial_2_path,
             self.key_ibs_gt: ibs_gt_path,

@@ -130,7 +130,7 @@ def reconstruct_ibs(specs: dict, filename: str, model: torch.nn.Module):
     points = seed_points
 
     while points.shape[0] < point_num:
-        logger.debug("current points number: {}, target: {}".format(points.shape[0], point_num))
+        logger.info("current points number: {}, target: {}".format(points.shape[0], point_num))
         query_points = random_utils.get_random_points_from_seeds(points, diffuse_num, diffuse_radius)
         query_points = np.array(query_points, dtype=np.float32)
         query_points = torch.from_numpy(query_points).to(device)
@@ -167,7 +167,7 @@ def get_filename_list(specs):
 
 
 if __name__ == '__main__':
-    config_filepath = 'postprocess/configs/reconstruct_ibs.json'
+    config_filepath = 'postprocess/configs/reconstruct_ibs_IBSNet.json'
     specs = path_utils.read_config(config_filepath)
     path_utils.generate_path(specs.get("path_options").get("reconstruct_result_save_dir"))
 
@@ -198,7 +198,7 @@ if __name__ == '__main__':
     logger.info("use {} to test".format(time_end_test - time_begin_test))
 
     # zip
-    time_begin_zip = time.time()
-    create_zip(specs)
-    time_end_zip = time.time()
-    logger.info("use {} to zip".format(time_end_zip - time_begin_zip))
+    # time_begin_zip = time.time()
+    # create_zip(specs)
+    # time_end_zip = time.time()
+    # logger.info("use {} to zip".format(time_end_zip - time_begin_zip))

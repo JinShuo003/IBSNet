@@ -1,5 +1,5 @@
 {
-  "TAG": "IBSNet_transformer_IM_lr5e4_l2",
+  "TAG": "Grasping_Field",
   "Device": 0,
   "path_options": {
     "geometries_dir": {
@@ -13,7 +13,7 @@
       "handle_scene": "scene\\d.\\d{4}",
       "handle_filename": "scene5.1028_view2"
     },
-    "model_path": "model_paras/IBSNet_transformer_IM_lr5e4_l2/epoch_30.pth",
+    "model_path": "model_paras/Grasping_Field/epoch_22.pth",
     "test_split_file_path": "dataset/test/test.json",
     "reconstruct_result_save_dir": "test_result",
     "log_dir": "logs/reconstruct_ibs"
@@ -27,7 +27,7 @@
     "AABBScale": 1.2
   },
   "LogOptions": {
-    "TAG": "IBSNet_transformer_IM_lr5e4_l2",
+    "TAG": "Grasping_Field",
     "Type": "test",
     "LogDir": "logs",
     "GlobalLevel": "INFO",

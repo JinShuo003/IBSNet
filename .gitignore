@@ -3,6 +3,7 @@
 .git/
 __pycache__
 
+tensorboard_logs
 result
 test_result
 history_result

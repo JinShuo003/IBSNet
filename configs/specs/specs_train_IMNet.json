@@ -1,0 +1,34 @@
+{
+    "TAG": "IMNet_obj1",
+    "Description" : "Encoder: ResNetPointNet，Decoder: IMNet",
+    "DataSource" : "/home/shuojin/data/IBSNet",
+    "TrainSplit" : "dataset/train/train.json",
+    "TestSplit" : "dataset/test/test.json",
+    "ParaSaveDir" : "model_paras",
+    "TensorboardLogDir" : "tensorboard_logs/",
+    "Device" : 0,
+    "SamplesPerScene" : 50000,
+    "TrainOptions": {
+        "ObjIdx" : 1,
+        "NumEpochs" : 400,
+        "BatchSize" : 4,
+        "DataLoaderThreads" : 8,
+        "ContinueTrain": false,
+        "ContinueFromEpoch": 0,
+        "LearningRateOptions": {
+            "LRScheduler": "StepLR",
+            "InitLearningRate": 1e-4,
+            "StepSize": 20,
+            "Gamma": 0.5
+        }
+    },
+    "LogOptions": {
+        "TAG": "IMNet_obj1",
+        "Type": "train",
+        "LogDir" : "logs",
+        "GlobalLevel": "INFO",
+        "FileLevel": "INFO",
+        "StreamLevel": "INFO",
+        "Mode": "w"
+    }
+}

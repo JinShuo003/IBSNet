@@ -4,20 +4,20 @@ import sys
 
 import numpy as np
 
-sys.path.insert(0, "/home/data/jinshuo/IBS_Net")
+sys.path.insert(0, "/home/shuojin/IBS_Net")
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
 import time
 import torch
 import logging
 
-from models.models_grasping_field import IBSNet
+from models.models_IMNet import IBSNet
 from utils.reconstruct_utils import *
 from utils import log_utils, path_utils, geometry_utils, random_utils
 
 
-def get_aabb(specs: dict, filename: str, aabb_dir: str=r"data/boundingBox"):
+def get_aabb(specs: dict, filename: str, aabb_dir: str=r"/home/shuojin/data/IBSNet/boundingBox"):
     category_re = specs.get("path_options").get("format_info").get("category_re")
     scene_re = specs.get("path_options").get("format_info").get("scene_re")
     aabb_scale = specs.get("ReconstructOptions").get("AABBScale")
@@ -37,9 +37,10 @@ def is_point_on_ibs(point: np.ndarray, min_bound, max_bound):
     return True
 
 
-def get_points_on_ibs(model: torch.nn.Module, pcd1: torch.Tensor, pcd2: torch.Tensor, query_points: torch.Tensor, threshold: float):
+def get_points_on_ibs(model1: torch.nn.Module, model2: torch.nn.Module, pcd1: torch.Tensor, pcd2: torch.Tensor, query_points: torch.Tensor, threshold: float):
     """
-    :param model: pretrained model
+    :param model1: pretrained model1
+    :param model2: pretrained model2
     :param pcd1: point cloud 1, (2048, 3)
     :param pcd2: point cloud 2, (2048, 3)
     :param query_points: query points, (n, 3)
@@ -48,7 +49,8 @@ def get_points_on_ibs(model: torch.nn.Module, pcd1: torch.Tensor, pcd2: torch.Te
     """
     assert pcd1.device == pcd2.device == query_points.device
     sample_points_num = query_points.shape[0]
-    udf1, udf2 = model(pcd1, pcd2, query_points, sample_points_num)
+    udf1 = model1(pcd1, query_points, sample_points_num)
+    udf2 = model2(pcd2, query_points, sample_points_num)
     udf1_np = udf1.detach().cpu().numpy()
     udf2_np = udf2.detach().cpu().numpy()
     points = [query_point.detach().cpu().numpy() for i, query_point in enumerate(query_points) if abs(udf1_np[i] - udf2_np[i]) < threshold]
@@ -56,7 +58,7 @@ def get_points_on_ibs(model: torch.nn.Module, pcd1: torch.Tensor, pcd2: torch.Te
     return np.array(points, dtype=np.float32).reshape(-1, 3)
 
 
-def get_seed_points(specs: dict, filename: str, model: torch.nn.Module, pcd1: torch.Tensor, pcd2: torch.Tensor, threshold: float):
+def get_seed_points(specs: dict, filename: str, model1: torch.nn.Module, model2: torch.nn.Module, pcd1: torch.Tensor, pcd2: torch.Tensor, threshold: float):
     device = specs.get("Device")
     seed_num = specs.get("ReconstructOptions").get("SeedPointNum")
 
@@ -69,7 +71,7 @@ def get_seed_points(specs: dict, filename: str, model: torch.nn.Module, pcd1: to
         logger.debug("iterate {} when generate seeds, seed number: {}".format(iterate_time, seed_points.shape[0]))
         query_points = random_utils.get_random_points_in_aabb(aabb, seed_num)
         query_points = torch.from_numpy(np.array(query_points, dtype=np.float32)).to(device)
-        points_on_ibs = get_points_on_ibs(model, pcd1, pcd2, query_points, threshold)
+        points_on_ibs = get_points_on_ibs(model1, model2, pcd1, pcd2, query_points, threshold)
         seed_points = np.concatenate((seed_points, points_on_ibs), axis=0)
         iterate_time += 1
 
@@ -102,11 +104,12 @@ def get_pcd_torch(specs: dict, filename: str):
     return pcd1_torch, pcd2_torch
 
 
-def reconstruct_ibs(specs: dict, filename: str, model: torch.nn.Module):
+def reconstruct_ibs(specs: dict, filename: str, model1: torch.nn.Module, model2: torch.nn.Module):
     """
     :param specs: specification
     :param filename: filename
-    :param model: pretrained model
+    :param model1: pretrained model1
+    :param model1: pretrained model2
     :return: ibs_pcd: o3d.geometry.PointCloud
     """
     device = specs.get("Device")
@@ -120,7 +123,7 @@ def reconstruct_ibs(specs: dict, filename: str, model: torch.nn.Module):
     diffuse_radius = specs.get("ReconstructOptions").get("DiffuseRadius")
 
     # generate seed points
-    seed_points = get_seed_points(specs, filename, model, pcd1, pcd2, threshold)
+    seed_points = get_seed_points(specs, filename, model1, model2, pcd1, pcd2, threshold)
     if seed_points is None:
         logger.warning("generate seed points failed")
         return
@@ -133,7 +136,7 @@ def reconstruct_ibs(specs: dict, filename: str, model: torch.nn.Module):
         query_points = random_utils.get_random_points_from_seeds(points, diffuse_num, diffuse_radius)
         query_points = np.array(query_points, dtype=np.float32)
         query_points = torch.from_numpy(query_points).to(device)
-        points_ = get_points_on_ibs(model, pcd1, pcd2, query_points, threshold)
+        points_ = get_points_on_ibs(model1, model2, pcd1, pcd2, query_points, threshold)
         points = np.concatenate((points, points_), axis=0)
 
     ibs_pcd = o3d.geometry.PointCloud()
@@ -166,7 +169,7 @@ def get_filename_list(specs):
 
 
 if __name__ == '__main__':
-    config_filepath = 'postprocess/configs/reconstruct_ibs_grasping_field.json'
+    config_filepath = 'postprocess/configs/reconstruct_ibs_IMNet.json'
     specs = path_utils.read_config(config_filepath)
     path_utils.generate_path(specs.get("path_options").get("reconstruct_result_save_dir"))
 
@@ -178,9 +181,14 @@ if __name__ == '__main__':
 
     # get pretrained model
     device = specs.get("Device")
-    model_path = specs.get("path_options").get("model_path")
-    checkpoint = torch.load(model_path, map_location="cuda:{}".format(device))
-    model = get_network(specs, IBSNet, checkpoint)
+    model1_path = specs.get("path_options").get("model1_path")
+    model2_path = specs.get("path_options").get("model2_path")
+
+    checkpoint1 = torch.load(model1_path, map_location="cuda:{}".format(device))
+    checkpoint2 = torch.load(model2_path, map_location="cuda:{}".format(device))
+
+    model1 = get_network(specs, IBSNet, checkpoint1)
+    model2 = get_network(specs, IBSNet, checkpoint2)
 
     # get instance name
     filename_list = get_filename_list(specs)
@@ -190,7 +198,7 @@ if __name__ == '__main__':
     for filename in filename_list:
         logger.info("current scene: {}".format(filename))
         _logger, file_handler, stream_handler = log_utils.get_logger(specs.get("path_options").get("log_dir"), filename)
-        reconstruct_ibs(specs, filename, model)
+        reconstruct_ibs(specs, filename, model1, model2)
         _logger.removeHandler(file_handler)
         _logger.removeHandler(stream_handler)
     time_end_test = time.time()

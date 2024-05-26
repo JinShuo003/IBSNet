@@ -15,7 +15,6 @@ import logging
 from models.models_transformer import IBSNet
 from utils.reconstruct_utils import *
 from utils import log_utils, path_utils, geometry_utils, random_utils
-from dataset import dataset_udfSamples
 
 
 def get_aabb(specs: dict, filename: str, aabb_dir: str=r"data/boundingBox"):

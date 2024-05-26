@@ -1,3 +1,6 @@
+"""
+计算ibs的工具类
+"""
 import logging
 import time
 

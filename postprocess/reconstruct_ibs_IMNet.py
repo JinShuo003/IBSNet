@@ -1,8 +1,8 @@
+"""
+从训练好的IMNet中重建ibs
+"""
 import os
-import re
 import sys
-
-import numpy as np
 
 sys.path.insert(0, "/home/shuojin/IBS_Net")
 

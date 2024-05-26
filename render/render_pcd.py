@@ -1,3 +1,6 @@
+"""
+调用blender进行渲染
+"""
 # blender packages
 import logging
 # built-in modules

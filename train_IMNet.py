@@ -1,9 +1,11 @@
+"""
+IMNet的训练代码
+"""
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
 import argparse
 import time
-import os.path
 from datetime import datetime, timedelta
 
 from utils import path_utils

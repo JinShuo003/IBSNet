@@ -1,3 +1,6 @@
+"""
+GFNet的训练代码
+"""
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 

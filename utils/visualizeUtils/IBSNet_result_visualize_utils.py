@@ -1,5 +1,5 @@
 """
-可视化不同方法估计IBS的结果
+可视化不同方法得到的IBS
 """
 import math
 import os.path

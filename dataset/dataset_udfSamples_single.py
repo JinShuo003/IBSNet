@@ -1,3 +1,6 @@
+"""
+单物体数据集，一次仅加载一个残缺点云及对应的查询点数据
+"""
 import logging
 import os
 import re

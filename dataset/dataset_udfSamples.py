@@ -1,3 +1,6 @@
+"""
+数据集，能够同时加载一对残缺点云及对应的查询点数据
+"""
 import logging
 import os
 import re

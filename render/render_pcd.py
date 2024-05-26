@@ -212,52 +212,31 @@ def clear_imported_objects():
             bpy.data.materials.remove(material)
 
 
-def launch_render(pcd_path: str, ibs_path: str, output_path: str, filename: str, render_options: dict, additional_info: str):
+def launch_render(pcd_path: str, output_path: str, filename: str, additional_info: str):
     logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
     init_scene()
     create_materials()
     init_lights()
     creat_pointcloud_modifier('pointcloud1 modifier', 'pointcloud1', 0.007)
-    creat_pointcloud_modifier('pointcloud2 modifier', 'pointcloud2', 0.007)
     creat_pointcloud_modifier('ibs modifier', 'ibs', 0.007)
 
     camera_obj: Object = bpy.data.objects['Camera']
-    radius = 1.5
-    camera_location = np.array([-0.1, 0.7, 0.3])
+    radius = 1.2
+    camera_location = np.array([0.7, 0.7, 0.3])
     camera_location /= np.linalg.norm(camera_location)
     camera_location *= radius
     camera_obj.location = camera_location
 
     pcd_path = Path(pcd_path)
-    ibs_path = Path(ibs_path)
     output_path = Path(output_path)
-    ply1_basename = "{}_0".format(filename)
-    ply2_basename = "{}_1".format(filename)
-    ibs_basename = "{}".format(filename)
-    ply1_filename = "{}.ply".format(ply1_basename)
-    ply2_filename = "{}.ply".format(ply2_basename)
-    ibs_filename = "{}.ply".format(ibs_basename)
-    ply1_filepath = pcd_path / ply1_filename
-    ply2_filepath = pcd_path / ply2_filename
-    ibs_filepath = ibs_path / ibs_filename
+    ply_basename = "{}_1".format(filename)
+    ply_filename = "{}.ply".format(ply_basename)
+    ply_filepath = pcd_path / ply_filename
 
-    if render_options.get('pcd1'):
-        bpy.ops.wm.ply_import(filepath=ply1_filepath.as_posix(), forward_axis='NEGATIVE_Z', up_axis='Y')
-        pointcloud1 = bpy.data.objects[ply1_basename]
-        modifier = pointcloud1.modifiers.new('modifier', 'NODES')
-        modifier.node_group = bpy.data.node_groups['pointcloud1 modifier']
-
-    if render_options.get('pcd2'):
-        bpy.ops.wm.ply_import(filepath=ply2_filepath.as_posix(), forward_axis='NEGATIVE_Z', up_axis='Y')
-        pointcloud2 = bpy.data.objects[ply2_basename]
-        modifier = pointcloud2.modifiers.new('modifier', 'NODES')
-        modifier.node_group = bpy.data.node_groups['pointcloud2 modifier']
-
-    if render_options.get('ibs'):
-        bpy.ops.wm.ply_import(filepath=ibs_filepath.as_posix(), forward_axis='NEGATIVE_Z', up_axis='Y')
-        ibs = bpy.data.objects[ibs_basename]
-        modifier = ibs.modifiers.new('modifier', 'NODES')
-        modifier.node_group = bpy.data.node_groups['ibs modifier']
+    bpy.ops.wm.ply_import(filepath=ply_filepath.as_posix(), forward_axis='NEGATIVE_Z', up_axis='Y')
+    pointcloud1 = bpy.data.objects[ply_basename]
+    modifier = pointcloud1.modifiers.new('modifier', 'NODES')
+    modifier.node_group = bpy.data.node_groups['pointcloud1 modifier']
 
     for view_index, sign in enumerate(product(np.array([1, -1]), repeat=3)):
         camera_obj.location = camera_location * sign
@@ -270,43 +249,26 @@ def launch_render(pcd_path: str, ibs_path: str, output_path: str, filename: str,
 if __name__ == '__main__':
     import re
 
+    scene_name = 'scene1.1007'
     filename_list = [
-        # "scene1.1016_view7",
-        # "scene2.1033_view4"
-        # "scene3.1007_view1"
-        # "scene4.1015_view10",
-        # "scene4.1015_view14",
-        # "scene5.1028_view2",
-        # "scene6.1001_view0"
-        "scene6.1019_view9"
+        'scene1.1007_view3',
+        'scene1.1007_view4',
+        'scene1.1007_view5'
     ]
+
+    category = re.match("scene\\d", scene_name).group()
+    scene_name = re.match("scene\\d.\\d{4}", scene_name).group()
+    file_name = re.match("scene\\d.\\d{4}", scene_name).group()
+
+    pcd_path = "D:\\dataset\\IBSNet\\trainData\\pcdComplete\\{}".format(category)
+    output_path = "D:\\dataset\\IBSNet\\render\\{}\\{}".format(scene_name, file_name)
+    launch_render(pcd_path, output_path, file_name, "gt")
 
     for filename in filename_list:
         category = re.match("scene\\d", filename).group()
         scene_name = re.match("scene\\d.\\d{4}", filename).group()
+        file_name = re.match("scene\\d.\\d{4}_view\\d+", filename).group()
 
-        render_options = {'pcd1': True, 'pcd2': True, 'ibs': True}
-        pcd_path = "D:\\dataset\\IBSNet\\trainData\\pcdComplete\\INTE\\{}".format(category)
-        ibs_path = "D:\\dataset\\IBSNet\\evaluateData\\IBS_pcd_complete\\{}".format(category)
-        output_path = "D:\\dataset\\IBSNet\\render\\{}\\{}".format(scene_name, filename)
-        # gt complete
-        launch_render(pcd_path, ibs_path, output_path, scene_name, render_options, "gt")
-
-        render_options = {'pcd1': True, 'pcd2': True, 'ibs': True}
         pcd_path = "D:\\dataset\\IBSNet\\trainData\\pcdScan\\diffUDF\\{}".format(category)
-        ibs_path = "D:\\dataset\\IBSNet\\evaluateData\\IBS_pcd_scan\\{}".format(category)
         output_path = "D:\\dataset\\IBSNet\\render\\{}\\{}".format(scene_name, filename)
-        # input geometric
-        launch_render(pcd_path, ibs_path, output_path, filename, render_options, "input")
-
-        # render_options = {'pcd1': True, 'pcd2': True, 'ibs': True}
-        # pcd_path = "D:\\dataset\\IBSNet\\trainData\\pcdScan\\diffUDF\\{}".format(category)
-        # ibs_path = "D:\\dataset\\IBSNet\\test_result\\Grasping_field\\{}".format(category)
-        # output_path = "D:\\dataset\\IBSNet\\render\\{}\\{}".format(scene_name, filename)
-        # launch_render(pcd_path, ibs_path, output_path, filename, render_options, "Grasping_field")
-
-        render_options = {'pcd1': True, 'pcd2': True, 'ibs': True}
-        pcd_path = "D:\\dataset\\IBSNet\\trainData\\pcdScan\\diffUDF\\{}".format(category)
-        ibs_path = "D:\\dataset\\IBSNet\\test_result\\IBSNet_transformer_IM_lr5e4_l2\\{}".format(category)
-        output_path = "D:\\dataset\\IBSNet\\render\\{}\\{}".format(scene_name, filename)
-        launch_render(pcd_path, ibs_path, output_path, filename, render_options, "IBSNet")
+        launch_render(pcd_path, output_path, file_name, "partial")

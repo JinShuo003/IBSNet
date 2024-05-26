@@ -1,12 +1,13 @@
 """
-可视化工具，配置好./config/visualization.json后可以可视化mesh模型、点云、位于模型表面和IBS表面的sdf点、各自和总体的aabb框、交互区域gt
+可视化工具根据配置观察不同的数据
 """
-import open3d as o3d
+import copy
 import os
 import re
-import json
+
 import numpy as np
-import copy
+import open3d as o3d
+
 from utils import path_utils
 
 

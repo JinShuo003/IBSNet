@@ -1,5 +1,5 @@
 """
-输入两个mesh，以一定规则在空间内生成随机点，并计算这些点的sdf值
+输入两个mesh，在空间内生成随机点，计算随机点的udf值，作为训练网络的gt
 """
 import copy
 import multiprocessing
@@ -11,7 +11,7 @@ import logging
 import numpy as np
 import open3d as o3d
 
-from utils import randomNum, log_utils, path_utils
+from utils import random_utils, log_utils, path_utils
 
 
 class SampleMethodException(Exception):
@@ -82,9 +82,9 @@ class IndirectSdfSampleGenerator:
 
         while len(mesh1_points) < mesh1_num:
             if len(mesh1_points) == 0:
-                random_points = randomNum.get_random_points_in_sphere(200000)
+                random_points = random_utils.get_random_points_in_sphere(200000)
             else:
-                random_points = randomNum.get_random_points_from_seeds(mesh1_points, 3, dist * 3)
+                random_points = random_utils.get_random_points_from_seeds(mesh1_points, 3, dist * 3)
             dists = self.query_dist(mesh1, random_points)
             mesh1_points += [random_points[i] for i in range(len(random_points)) if
                            dists[i] <= dist and np.linalg.norm(random_points[i]) <= 0.5]
@@ -92,15 +92,15 @@ class IndirectSdfSampleGenerator:
 
         while len(mesh2_points) < mesh2_num:
             if len(mesh2_points) == 0:
-                random_points = randomNum.get_random_points_in_sphere(200000)
+                random_points = random_utils.get_random_points_in_sphere(200000)
             else:
-                random_points = randomNum.get_random_points_from_seeds(mesh2_points, 3, dist * 3)
+                random_points = random_utils.get_random_points_from_seeds(mesh2_points, 3, dist * 3)
             dists = self.query_dist(mesh2, random_points)
             mesh2_points += [random_points[i] for i in range(len(random_points)) if
                            dists[i] <= dist and np.linalg.norm(random_points[i]) <= 0.5]
         mesh2_points = np.array(random.sample(mesh2_points, mesh2_num))
 
-        sphere_points = np.array(randomNum.get_random_points_in_sphere(sphere_num))
+        sphere_points = np.array(random_utils.get_random_points_in_sphere(sphere_num))
 
         return np.concatenate([mesh1_points, mesh2_points, sphere_points], axis=0)
 
@@ -113,10 +113,10 @@ class IndirectSdfSampleGenerator:
         proportion_IOU = sample_options["proportion_IOU"]
         proportion_other = sample_options["proportion_other"]
 
-        random_points_aabb1 = randomNum.get_random_points_with_limit(aabb1, int(points_num * proportion_aabb1))
-        random_points_aabb2 = randomNum.get_random_points_with_limit(aabb2, int(points_num * proportion_aabb2))
-        random_points_IOU = randomNum.get_random_points_with_limit(aabb_IOU, int(points_num * proportion_IOU))
-        random_points_other = randomNum.get_random_points_in_sphere(int(points_num * proportion_other))
+        random_points_aabb1 = random_utils.get_random_points_with_limit(aabb1, int(points_num * proportion_aabb1))
+        random_points_aabb2 = random_utils.get_random_points_with_limit(aabb2, int(points_num * proportion_aabb2))
+        random_points_IOU = random_utils.get_random_points_with_limit(aabb_IOU, int(points_num * proportion_IOU))
+        random_points_other = random_utils.get_random_points_in_sphere(int(points_num * proportion_other))
         return np.concatenate([random_points_aabb1, random_points_aabb2, random_points_IOU, random_points_other], axis=0)
 
     def get_sdf_values(self, mesh1, mesh2, sdf_samples):

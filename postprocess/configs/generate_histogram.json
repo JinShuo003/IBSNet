@@ -11,6 +11,7 @@
     "incomplete_cd_dir": "D:\\dataset\\IBSNet\\result\\incomplete_cd",
     "base_dir": "D:\\dataset\\IBSNet\\result\\IBSNet",
     "reconstruct_cd_geometric_dir": "D:\\dataset\\IBSNet\\result\\geometric",
+    "reconstruct_cd_IMNet_dir": "D:\\dataset\\IBSNet\\result\\IMNet",
     "reconstruct_cd_grasping_field_dir": "D:\\dataset\\IBSNet\\result\\grasping_field",
     "reconstruct_cd_IBSNet_dir": "D:\\dataset\\IBSNet\\result\\IBSNet",
     "log_dir": "logs/calculate_avrg_cd"

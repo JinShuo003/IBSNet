@@ -1,14 +1,12 @@
 """
-根据./config/generateDataset.json中的设置，划分测试集、训练集，并保存划分好的结果
+划分测试集、训练集
 """
 import json
 import os
 import re
 
-from numpy import sort
-from ordered_set import OrderedSet
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 
 
 def parse_config(config_filepath: str = './config/generateSDF.json'):

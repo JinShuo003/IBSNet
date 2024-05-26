@@ -6,7 +6,8 @@
       "ibs_gt_dir": "D:\\dataset\\IBSNet\\evaluateData\\IBS_pcd_complete",
       "ibs_geometric_dir": "D:\\dataset\\IBSNet\\evaluateData\\IBS_pcd_scan",
       "ibs_grasping_field_dir": "D:\\dataset\\IBSNet\\test_result\\Grasping_field",
-      "ibs_IBSNet_dir": "D:\\dataset\\IBSNet\\test_result\\IBSNet_transformer_IM_lr5e4_l2"
+      "ibs_IBSNet_dir": "D:\\dataset\\IBSNet\\test_result\\IBSNet_transformer_IM_lr5e4_l2",
+      "ibs_IMNet_dir": "D:\\dataset\\IBSNet\\test_result\\IMNet"
     },
     "format_info": {
       "category_re": "scene\\d",

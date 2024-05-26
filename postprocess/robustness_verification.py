@@ -1,5 +1,5 @@
 """
-绘制残缺程度-重建cd散点图，用来说明不同方法对残缺程度的敏感性
+绘制输入点云残缺程度-cd值的散点图，说明不同方法对残缺程度的敏感性
 """
 
 import os
@@ -8,7 +8,6 @@ import re
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib import font_manager
-import numpy as np
 
 from utils import path_utils
 
@@ -22,6 +21,7 @@ def getGeometriesPath(specs, instance_name):
 
     incomplete_cd_dir = specs.get("path_options").get("incomplete_cd_dir")
     reconstruct_cd_geometric_dir = specs.get("path_options").get("reconstruct_cd_geometric_dir")
+    reconstruct_cd_IMNet_dir = specs.get("path_options").get("reconstruct_cd_IMNet_dir")
     reconstruct_cd_grasping_field_dir = specs.get("path_options").get("reconstruct_cd_grasping_field_dir")
     reconstruct_cd_IBSNet_dir = specs.get("path_options").get("reconstruct_cd_IBSNet_dir")
 
@@ -32,6 +32,8 @@ def getGeometriesPath(specs, instance_name):
     geometries_path['incomplete1_cd'] = os.path.join(incomplete_cd_dir, category, incomplete1_cd_filename)
     geometries_path['incomplete2_cd'] = os.path.join(incomplete_cd_dir, category, incomplete2_cd_filename)
     geometries_path['reconstruct_cd_geometric'] = os.path.join(reconstruct_cd_geometric_dir, category,
+                                                               reconstruct_cd_filename)
+    geometries_path['reconstruct_cd_IMNet'] = os.path.join(reconstruct_cd_IMNet_dir, category,
                                                                reconstruct_cd_filename)
     geometries_path['reconstruct_cd_grasping_field'] = os.path.join(reconstruct_cd_grasping_field_dir, category,
                                                                     reconstruct_cd_filename)
@@ -50,12 +52,15 @@ def get_data(specs, instance_name):
         incomplete2_cd = float(f.read())
     with open(geometry_path.get('reconstruct_cd_geometric'), 'r') as f:
         reconstruct_cd_geometric = float(f.read())
+    with open(geometry_path.get('reconstruct_cd_IMNet'), 'r') as f:
+        reconstruct_cd_IMNet = float(f.read())
     with open(geometry_path.get('reconstruct_cd_grasping_field'), 'r') as f:
         reconstruct_cd_grasping_field = float(f.read())
     with open(geometry_path.get('reconstruct_cd_IBSNet'), 'r') as f:
         reconstruct_cd_IBSNet = float(f.read())
 
-    return incomplete1_cd, incomplete2_cd, reconstruct_cd_geometric, reconstruct_cd_grasping_field, reconstruct_cd_IBSNet
+    return (incomplete1_cd, incomplete2_cd, reconstruct_cd_geometric,
+            reconstruct_cd_IMNet, reconstruct_cd_grasping_field, reconstruct_cd_IBSNet)
 
 
 if __name__ == '__main__':
@@ -70,17 +75,21 @@ if __name__ == '__main__':
 
     # 参数
     incomplete_cd_geometric_list = []
+    incomplete_cd_IMNet_list = []
     incomplete_cd_grasping_field_list = []
     incomplete_cd_IBSNet_list = []
     reconstruct_cd_geometric_list = []
+    reconstruct_cd_IMNet_list = []
     reconstruct_cd_grasping_field_list = []
     reconstruct_cd_IBSNet_list = []
 
     bar_num = 7
     cd_total_geometric = [0] * bar_num
+    cd_total_IMNet = [0] * bar_num
     cd_total_grasping_field = [0] * bar_num
     cd_total_IBSNet = [0] * bar_num
     instance_num_geometric = [0] * bar_num
+    instance_num_IMNet = [0] * bar_num
     instance_num_grasping_field = [0] * bar_num
     instance_num_IBSNet = [0] * bar_num
 
@@ -88,8 +97,8 @@ if __name__ == '__main__':
         for scene in filename_tree[category]:
             for filename in filename_tree[category][scene]:
                 try:
-                    incomplete1_cd, incomplete2_cd, reconstruct_cd_geometric, reconstruct_cd_grasping_field, reconstruct_cd_IBSNet = get_data(
-                        specs, filename)
+                    (incomplete1_cd, incomplete2_cd, reconstruct_cd_geometric, reconstruct_cd_IMNet,
+                     reconstruct_cd_grasping_field, reconstruct_cd_IBSNet) = get_data(specs, filename)
                     incomplete_cd = incomplete1_cd if base == '1' else incomplete2_cd
                     idx = int(incomplete_cd * 40)
                     if idx >= bar_num:
@@ -99,6 +108,11 @@ if __name__ == '__main__':
                         instance_num_geometric[idx] += 1
                         incomplete_cd_geometric_list.append(incomplete_cd)
                         reconstruct_cd_geometric_list.append(reconstruct_cd_geometric)
+                    if reconstruct_cd_IMNet != 0.0:
+                        cd_total_IMNet[idx] += reconstruct_cd_IMNet
+                        instance_num_IMNet[idx] += 1
+                        incomplete_cd_IMNet_list.append(incomplete_cd)
+                        reconstruct_cd_IMNet_list.append(reconstruct_cd_IMNet)
                     if reconstruct_cd_grasping_field != 0.0:
                         cd_total_grasping_field[idx] += reconstruct_cd_grasping_field
                         instance_num_grasping_field[idx] += 1
@@ -113,48 +127,26 @@ if __name__ == '__main__':
                     print(e)
 
     cd_total_geometric = [a / b for a, b in zip(cd_total_geometric, instance_num_geometric)]
+    cd_total_IMNet = [a / b for a, b in zip(cd_total_IMNet, instance_num_IMNet)]
     cd_total_grasping_field = [a / b for a, b in zip(cd_total_grasping_field, instance_num_grasping_field)]
     cd_total_IBSNet = [a / b for a, b in zip(cd_total_IBSNet, instance_num_IBSNet)]
 
-    # x_label = ['({}-{})'.format(float(i) / 40, float(i+1) / 40) for i in range(bar_num)]
     x_label = list(range(bar_num))
 
-    data = {'method': ['几何计算'] * bar_num + ['Grasping Field'] * bar_num + ['IBSNet'] * bar_num,
-            'ibs_accuracy_cd': cd_total_geometric + cd_total_grasping_field + cd_total_IBSNet,
-            'incomplete_level': x_label + x_label + x_label}
+    data = {'method': ['几何计算'] * bar_num + ['IMNet'] * bar_num + ['Grasping Field'] * bar_num + ['IBSNet'] * bar_num,
+            'ibs_accuracy_cd': cd_total_geometric + cd_total_IMNet + cd_total_grasping_field + cd_total_IBSNet,
+            'incomplete_level': x_label + x_label + x_label + x_label}
     tag_list = [str(i) for i in range(bar_num)]
 
     fig = sns.lineplot(x='incomplete_level', y='ibs_accuracy_cd', hue='method', data=data, linewidth=5)
 
     incompletion_level_mapping = '输入点云残缺程度等级对应区间\n' + '\n'.join(['{}: ({}, {})'.format(i + 1, float(i) / 40, float(i+1) / 40) for i in range(bar_num)])
-    # plt.text(0, 0.85, incompletion_level_mapping, va='top', fontsize=15, transform=plt.gca().transAxes, fontproperties=my_font)
     plt.xlabel('输入点云残缺程度等级', fontproperties=my_font, fontsize=20)
     plt.ylabel('重建交互平分面到真实值的单向倒角距离', fontproperties=my_font, fontsize=20)
     plt.xticks(fontproperties='Times New Roman', size=16)
     plt.yticks(fontproperties='Times New Roman', size=16)
     plt.legend(prop=my_font)
     fig.set_xlim(0, 6.2)
-    fig.set_ylim(0.0, 0.05)
-    # sns.barplot(x=tag_list, y=cd_total_geometric.tolist(), ax=ax1)
-    # sns.barplot(x=tag_list, y=cd_total_grasping_field.tolist(), ax=ax2)
-    # sns.barplot(x=tag_list, y=cd_total_IBSNet.tolist(), ax=ax3)
-    # ax1.set_title('geometric')
-    # ax2.set_title('grasping_field')
-    # ax3.set_title('IBSNet')
-    # ax1.set_xlabel("incomplete cd",)
-    # ax2.set_xlabel("incomplete cd")
-    # ax3.set_xlabel("incomplete cd")
-    # ax1.set_ylabel("ibs accuracy cd")
-    # ax2.set_ylabel("ibs accuracy cd")
-    # ax3.set_ylabel("ibs accuracy cd")
-    # ax1.set_ylim(0.0, 0.08)
-    # ax2.set_ylim(0.0, 0.08)
-    # ax3.set_ylim(0.0, 0.08)
+    fig.set_ylim(0.0, 0.055)
 
-    # 散点图
-    # fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 6))
-    # sns.scatterplot(x=incomplete_cd_geometric_list, y=reconstruct_cd_geometric_list, ax=ax1)
-    # sns.scatterplot(x=incomplete_cd_grasping_field_list, y=reconstruct_cd_grasping_field_list, ax=ax2)
-    # sns.scatterplot(x=incomplete_cd_IBSNet_list, y=reconstruct_cd_IBSNet_list, ax=ax3)
-    #
     plt.show()

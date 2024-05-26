@@ -1,5 +1,5 @@
 """
-归一化Mesh
+将成对Mesh共同归一化到单位球内
 """
 import copy
 import logging

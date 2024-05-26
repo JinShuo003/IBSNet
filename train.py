@@ -3,7 +3,6 @@ os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 import argparse
 import time
-import os.path
 from datetime import datetime, timedelta
 
 from utils import path_utils

@@ -1,3 +1,6 @@
+"""
+可视化不同方法估计IBS的结果
+"""
 import math
 import os.path
 
@@ -5,7 +8,6 @@ import numpy as np
 import open3d as o3d
 import open3d.visualization.gui as gui
 import open3d.visualization.rendering as rendering
-import pandas as pd
 import pyperclip
 
 from utils import path_utils

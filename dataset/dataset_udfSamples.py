@@ -7,7 +7,7 @@ import open3d as o3d
 import torch
 import torch.utils.data
 
-import utils.workspace as ws
+import workspace as ws
 
 
 def get_instance_filenames(data_source, split):

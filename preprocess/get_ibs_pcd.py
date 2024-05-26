@@ -1,5 +1,5 @@
 """
-获取点云形式ibs，从ibs mesh上采样，以aabb截断
+获取点云形式ibs，从ibs mesh进行采样，以aabb截断
 """
 import os
 import re
